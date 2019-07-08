@@ -1,0 +1,6 @@
+今天使用Burpsuite的过程中发现火狐浏览器无法正常抓包了，果断百度之
+
+修改方法：
+
+URL栏搜索： about:config
+在配置栏搜索network.proxy.allow_hijacking_localhost 改为true 
