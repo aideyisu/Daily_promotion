@@ -1,0 +1,47 @@
+7/12学习笔记：
+packages = find_packages()
+只要一部分为include = []
+排除一部分为exclude = []
+
+所以在setup中的是排除 tests 文件夹中的python文件
+之后进入get_install_requires()
+如果存在
+Pipfile.lock
+
+函数变量名前加小星星
+*多余的函数参数会作为一个元组存在
+**多余的参数被认为是字典
+
+python -m 将python模块用作脚本去运行
+
+tornado中的Application对象
+url(r"/", MainHandler) 
+至少包含一个正则表达式和一个处理程序类
+
+tornado 异步非阻塞框架的四大组成部分
+①Web框架 （RequestHandler子类，用于创建web应用和支持各种类）
+②HTTP（HTTPServer和AsyncHTTPClient）客户端和服务器端的实现
+③异步网络库包括（IOLoop和IOStream）用于http组件的构件块
+④协程库（tornado.gen）允许比连接回调更直接的方式编写异步代码。与async相似
+官方文档推荐使用原生协程async/await，有更高性能，更简化语句。仅在为与旧版本兼容时才使用装饰器
+
+pipenv：是各个项目之间互不干涉，库和库的版本均可不同
+安装过程 pip install pipenv
+
+直接按照提示使用
+pipenv install && pipenv shell 创建虚拟环境
+python -m rezt.app即可运行
+
+正则匹配规则uri pattern
+db 和 collection 的属性以连接到数据库
+
+在编写简单tornado服务器的过程中 instance()和current()之间的区别：
+current：返回当前线程的IOLoop，若已被make_current标记为当前，则返回该实例。否则调用instance方法创建一个IOLoop实例并返回
+instance：返回全局IOLoop的实例
+在tornado 5.0之后的版本，instance()已经成为current()的别称，即就是调用instance方法时，实际上调用的是current方法。
+def instance():
+        return IOLoop.current()
+震惊，昔日instance已全面学习current。
+
+四种内置数据结构之间的相互转化
+元组 列表 集合 可以直接 tuple list set函数直接转化，dict需要使用zip函数打包成一个个小元组
