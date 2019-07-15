@@ -1,0 +1,175 @@
+logging库  实现灵活时间记录系统的函数和类
+四大组成部件
+    logger: 日志类，应用程序往往通过调用它提供的api来记录日志；
+    handler: 发送到合适的目的输出
+    filter: 对日志信息进行过滤；
+    formatter:日志的格式化(可以改变默认的输出形式 例如:消除root带来的影响)
+%(**)s  确定具体选项
+asctime显示 日期/时间  -- datefmt可以修改asctime的表示方法   其中参数与支持的格式与 time.strfttime()相同   参考参数
+https://docs.python.org/3/library/time.html#time.strftime
+
+每个程序输出信息之前都要获得一个logger
+logging.warning('*****') 即可打印对应的日志到屏幕(默认情况只显示大于等于warning级别的日志)
+basicConfig通过参数改变logging的默认行为
+logger.debug|info|warning|error|critical设置日志级别
+logger.add**|remove**增加或删除目标(gilter|handler)
+logger.serLevel(*)最低日志级别(debug是最低内置级别，critical为最高)
+
+handler负责将相关信息送到指定目的地
+StreamHandler 向类似于sys.stdout或者sys.stderr的任何文件输出信息
+FileHandler 向文件输出日志信息，不过此函数会帮你打开这个文件
+handlers.RotatingFileHandler与FileHandler类似,管理文件大小，到一定大小后自动创建新的同名日志文件继续输出
+hanflers.TimedRotatingFileHandler与上述类似，但是不是通过大小，而是间隔一定的实践就自动创建新的日志文件，新的文件不是附加数字，而是当前时间
+
+f-string看来可以适用于任何要输出字符的地方
+
+argparse用来处理命令行参数，分为位置参数和选项参数
+位置参数是根据参数出现的位置确定: ls root/     root/就是位置参数
+选购想参数就是已经提前定义好的参数: ls -l    -l就是ls命令里面的一个选项参数
+使用方法：
+parser = argparse.ArgumentParser()  #创建一个解析对象
+parser.add_argument() #向该对象中添加你要关注的命令行参数和选项
+parser.parser_args()进行解析
+
+例如： parser.add_argument('filename', nargs=2,type=int) 
+-- 或 - 视为可选参数
+nargs表示参数后面的value有几个(默认为1)
+choices接收参数的范围
+dest设置value解析后放入哪个属性中
+action 若指定此参数则执行一个功能， 若action使用为count ->则监控使用了多少次可选参数等诸多参数
+type 指定参数类型
+help 参数说明，与整体参数会一同显示到目标位置
+default 参数的默认数值
+
+
+位置参数:直接加入参数不用声明参数属性 例 python ***.py "Hello,world"
+在参数前加 -- 代表此参数为可选参数
+可选参数与位置参数的区别：
+①可选参数可以不指定
+②使用可选参数前要先指定
+
+
+os与sys的区别
+OS：一种方便的使用操作系统函数的方法提供了访问操作系统底层的接口
+sys：可访问由解释器使用或维护的变量和与解释器进行交互的函数；负责程序与python解释器的交互，
+由一系列的函数与变量用于操纵python运行时的环境
+
+os.access查看文件是否有指定权限，(path, mode)    返回布尔类型
+mode参数包括： F_OK 是否存在   R_OK 可读 W_OK 可读 X_OK 可执行乎
+
+chdir改变当前工作目录到指定的路径
+os.getcwd()  #查看当前工作路径
+os.chdir('/root/') #修改当前工作路径到'/root'
+
+os.chmod()改变对目标文件或目录的权限
+os.chroot()更改根目录里到指定目录，需要管理员权限
+os.close()用于关闭指定的文件描述符
+
+
+sys.argv 命令行参数list   第一个元素是程序本身路径
+sys.modules.keys()返回所有已经导入的模块列表
+sys.exit()退出程序，正常退出时为exit(0)
+......等等诸多与与python软件工作自身有关系的函数
+
+----------------------------------------------------下午---------------------------------------------------------------
+
+
+collections
+counter(计数器) 对字典的方法，用于追踪值的出现次数；具备字典的所用功能和自己的功能
+OrderedDict(有序字典) 是对字典的补充，可以记住字典元素添加的顺序
+defaultdict(默认字典) 对字典类型的补充，默认给字典的值设置了一个类型 <class 'collections.defaultdict'>
+namedtuple(可命名元组) 可以创建一个包含tuple所有功能以及其他功能的类型
+deque(双端队列)搞笑插入删除，适用于队列和栈
+
+itertools(迭代器) 为高效循环二创建的迭代器函数
+提供了很多有用的生成迭代器的函数
+一   无限迭代器
+count 线性无限增长
+cycle 重复指定的元素
+repeat 把一个元素重复指定的次数(可无限)
+二   用于组合的函数
+三   其余常见函数
+takewhile 收集元素到迭代器，直到函数返回False停止
+accumulate迭代器返回累计求和的结果，若传入两个参数，则传入的函数累积计算的结果
+
+ functools 工具函数包：提供用于条哼或扩展函数和其他可调用对象的工具
+两个常用函数：
+①partial偏函数:
+把一个函数的某些参数设置为默认值，返回一个新的函数，调用这个新函数会更简单。为旧函数穿衣服
+②wraps：修饰器保持
+普通函数在使用修饰器后内部属性会被改变，使用wraps可以保持函数自身特性
+
+-----------例会--------
+|   物联网COAP协议   |
+-------------------------
+
+CSV库
+读取 / 写入数据  (本地csv文件，requests在线获取csv文件)  这种类型的数据比较适配于服务器所以获得了较为广泛应用
+csv.writer()普通写入
+csv.reader()
+csv.DictWriter()
+csv.DictReader()
+字典格式有更好的
+
+Ps 额外学习 ：open(path,'w',encoding='utf-8',newline='') 
+‘r’表示读    'w'表示写
+open后记得要close()
+encoding尤其以非UTF-8编码的文件    二进制 UTF-8 文件使用 'rb'打开
+读写文件尽量使用with open语句，少使用f = open()语句
+没有newline=‘’ 表示以空格作为换行符
+
+json库
+dict字典和JSON的格式非常接近，所以json库的主要功能就是提供二者之间的转换.dump转化为json时只产生str对象
+读取 json.loads 将包含json的字符串，比特或者比特流对象转化为字典
+例如：   json.loads('{"a": 123}') #将json格式转化为字典格式
+对于str的内容单引号或者双引号皆可，但是JSON必须双引号，否则报错；如果被处理的字符串包含在双引号内，则需要转义
+json.loads("{\"a\" : 123}")
+>{'a' : 123}
+loads的第二个参数encoding无实际意义，py3中str总是UTF-8，str是会自动使用utf-8
+参数为比特或比特流，也会自动判断为utf-8，-16或-32编码，默认也是按照utf-8转str后再进行处理
+
+pickle模块
+python持久化的存储数据，想要长久保存额的数据，不是简单放入内存导致关机断电就损失数据，就可以使用该库
+将任意一个python对象转化成一系统字节的操作叫做串行化对象。实现了所有对象的序列和反序列化基本上功能使用和
+
+JSON模块没有太大区别，方法也同样是dumps/dump和loads/load
+dumps和dump，load和loads的区别：
+dumps是将对象序列化
+dump是将对象序列化并保存到文件中
+loads将序列化字符串反序列化
+load将序列化字符串从文件读取并反序列化
+
+JSON和pickle模块的区别:
+1、JSON只能处理基本数据类型。pickle能处理所有Python的数据类型。
+2、JSON用于各种语言之间的字符转换。pickle用于Python程序对象的持久化或者Python程序间对象网络传输，但不同版本的Python序列化可能还有差异。
+
+Ps额外学习: open()和with open() as 的区别
+open()方法直接打开文件，如果出现异常，则直接出现错误，close方法无法执行导致文件无法关闭
+with语句的好处时到达语句末尾时，会自动关闭文件，即使出现异常。允许使用所谓的上下文管理器，支持两个方法的对象__enter__ 和__exit__
+前者不接受任何参数，在进入with语句时被调用，返回值为as后面的变量
+后者接收三个参数，异常类型，异常对象，异常跟踪。再离开方法时被调用
+file = open("test.txt", "r")
+try:
+    for lline in file.readlines():
+        print(line)
+except:
+    print("error")
+finally:
+    file.close()
+with语句的作用相当于 try-except-finally
+
+快排
+
+正则表达式：
+[*]   不管里面写的多丰富多彩也只匹配一个字符  (lll￢ω￢)
+re* 0 ||  多个 表达式
+re+ 1 || 多个表达式
+re? 0 || 1  由前面正则表达式定义的片段，非贪婪方式
+re{n} 匹配前方n个表达式
+re{n, }精准匹配前方n个表达式    o{1, }等价于 "o+ "  ; o{0, } 等价于"o* "     无上限，存在下限
+re{n, m}匹配n~m次，非贪婪
+a | b 匹配 
+
+
+
+
