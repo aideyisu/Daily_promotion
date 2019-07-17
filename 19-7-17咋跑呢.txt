@@ -1,0 +1,229 @@
+7/17
+昨日遗留：utils中的协程与原生协程之间的转化
+yield from 和 async 之间的转化
+带yield的函数时一个生成器，而不再是一个函数，这个生成器拥有send 和 yield 两个函数，next就相当于下一步生成哪个数，当前next开始的地方也是上一次next停止的地方
+那么，为什么用生成器呢？    因为如果用list会很占用内存例如1...1000 
+for i in range(1000):
+    a = n
+d使用yield就可以实现：
+def foo(num):
+    print('starting...')
+    whlie (num < 10):
+        num += 1
+        yield num
+for n in foo(0):
+    print(n)
+
+list内存占用线性增加，但是yield的占用内存始终为常数
+PEP 525 -- Asynchronous Generators
+PEP 492 -- Coroutines with async and await syntax
+492： PEP342（生成器协同， 提出yield）实现协程并通过PEP380（yield from 的提出）增强。但是如此存在缺点
+①协同程序容易与常规生成器混淆，因为他们具有相同的语法
+②功能是否为协程由yield 和 yield from 在句子中的表现决定，当重构期间的表述出现或消失可能会导致隐形的错误
+Ps 生成器：  python中使用了yield的函数被称为生成器。生成器是一个返回迭代器的函数，只能用于迭代操作
+        Pss 迭代器：迭代器是一个可以记住遍历的位置的对象。从首元素访问到尾元素，只会往前不会后退。
+迭代器由两个基本方法： iter()  和next() 字符串、列表或元组对象都可以创建迭代器。
+iter用于创建，next用于遍历 ； 当使用常规for语句进行遍历的时候，默认算使用了next()函数。 
+__iter__() 会返回一个特殊的迭代器对象，次对象实现了__next__()方法，并通过Stoplteration异常表示迭代完成
+__next__() 会返回下一个迭代器对象
+同时在yield 生成器中 Stoplteration异常用于表示迭代的完成，防止出现无限循环的情况，在__next__方法中我们可以设置在完成指定循环次数后出发Stoplteration异常来结束迭代
+492同时提出
+async with允许程序在进入和退出运行时、上下文时执行异步调用
+async for 可以在迭代器哦中执行异步调用
+await 类似于 yieldfrom ，暂停执行当前协程，直到await目标完成并返回结果数据
+
+PEP525基于PEP492引入的原生协程，通过添加对异步生成器的支持来拓展python的异步功能
+目前没有异步迭代协议(async for)的等效概念，这使得编写异步的数据生成器异常复杂
+因为必须定义一个实现__aiter__1和__anext__的类
+首先python生成器是包含一个或者多个yield表达式的任意函数
+def genfunc():
+    yield
+建议使用相同的方法来定义异步生成器
+async def genfunx():
+    await smth()
+    yield 42
+调用异步生成器函数会获得异步生成器对象
+
+结论 ：
+    utils.py中的flatten()函数就是一个用于迭代的生成器，并没有使用协程，所以不需要async/await的改版计划
+
+------------------------------------------------------------------------
+
+load_config_file 中的 importlib.import_module(动态导入模块)
+instantiate好像也是加载模块的 - -
+
+engine_connect构件URI去与数据库相连
+Ps URI (Universal Resource Identifier)通一资源标志符，表示的是web上每一种可用的资源，HTML文档，图像，视频片段，程序等都由一个URI进行定位
+URI通常由三部分组成：
+①访问资源的命名机制
+②存放资源的主机名
+③资源自身的名称，由路径表示
+举例 ： https://blog.csdn.net/qq_32595453/article/details/79516787
+我们可以如此解释：
+①这是一个可以通过https协议访问的资源
+②位于主机 blog.scdn.net上
+③通过路径 " /qq_32595453/article/details/79516787 "访问
+        Pss  URL 是 URI 的子集，（Uniform Resource Locator）统一资源定位符，通俗来讲是Internet上描述信息资源的字符串，采用URL可以用一种统一的格式来描述各种信息资源，其中包括文件、服务器的地址和目录等
+URL的格式也由三部分组成：
+①协议（或称为服务方式）
+②存有该资源的主机IP地址（有时也包括端口号）
+③主机资源的具体地址，如目录和文件名等
+一二部分用 “ ：// ” 隔开
+二三部分用 “ / ” 隔开
+从例子来看，URI和URL可能是相同的概念，但其实并不是，二者都定义了资源是什么，但是URL还定义了改如何访问资源，URL是一种具体的URI，它是URI的一个子集，不仅唯一标识资源，而且还提供了定位该资源的信息。
+URI是一种语义上的抽象概念，可以是绝对的，也可以是相对的，但是URL必须提供足够的信息来定位，必须是绝对的
+
+英语科普 ： serialize 连载
+
+serialize 会调用 b(s) 将参数转化为比特。
+在过程中如果是ATOM_TYPES 直接转
+SQE_TYPES 使用 flatten 先摊开在转
+
+cached_property 类 （网上说是缓存装饰器 ）
+Ps 其中__get__属于访问属性的方法，若类中将其重写，则这个类可以称为“ 描述符 ”。
+        Pss 描述器（Descriptor）每个类及其实例都各自有一个__dict__属性，该属性用于保存类或者对象的全部属性。描述器是一个类，它可以实现__get__ , __set__, __delete__方法分别控制属性的访问，赋值和删除操作，当某个类定义了一个描述其类属性、调用这个类对象的此属性，会出发相应描述其的三个方法
+                Ppss vars()函数返回对象的object属性和属性值的字典对象
+                Ppss 对象引用与 del 删除引用，python中不存在传值调用，一切传递的都是对象引用，也可以认为是传值调用。Python不允许程序员选择采用传值或是传引用。参数传递采用的是“传对象引用”的方式。实际上这种方式相当于传值和传引用的一种综合。
+对象引用
+①如果函数参数收到的是一个可变对象（字典或列表）的引用，就能修改对象的原始值，（相当于“传引用”来传递对象）
+如果收到的事一个不可变对象（数组，字符或者元组）的引用，就不能直接修改原始对象，（相当于“传值”来传递对象）
+②当复制列表或者字典的时候，就复制饿了对象列表的引用，如果改变引用的值，则会修改了原始的参数
+③为了简化内存管理，python通过引用计数的机制实现自动垃圾回收的功能。python中每个对象都有一个引用计数，用于计数该对象在不同场合分别被引用了多少次。每次引用python对象，对应的引用计数就增加1，每当销毁一次pythonn对象，相应的引用就减1，只有当引用计数为零时，才会真正从内存中删除该python对象
+其中python的数据类型和c不太一样，有一种分类标准 ： 可变 (mutable) / 不可变 (immutable)
+不可变：Number（int、float、bool、complex）、String、Tuple. 采用等效于“传值”的方式。
+可变：List、dictionary.采用等效于“传引用”的方式
+ = =救命啊，这个超展开可有点过于多了= =
+
+-----------------------------------我是分割线------------------------------------
+
+先往后看下午开始：如何运行API服务器
+python -m rezt.app 
+-m   将库中的python模块当作脚本去运行
+例如： python -m http.server py3中启动一个简单的http服务
+相当于import 当作模块来启动。 不同的加载py文件的格式，主要影响sys.path属性（相当于Linux中的PATH）
+python解析器运行的环境
+
+转向
+app.py
+import toanado.options 负责解析tornado容器的全局参数，同事是也能够解析命令行传递的参数和从配置文件中解析参数。
+通过tornado.options.options对象来维护全局变量参数，所有定义的选项变量都会作为该对象的属性
+
+首先解析命令行指令，
+使用路径拼接技术打开webapp.toml读取配置信息 传递给 utils.py工具包的load_config_file功能，并最终将一个字典传递给configs配置
+回复 ->load_config_file的实现
+
+os.path.splitext ：分离文件名与扩展名 ； 默认返回元组，可做分片操作
+Ps strip() 返回字符串的副本，并删除前导和后缀字符。（你想去掉字符串里的哪些字符，就将这些字符当参数传入。此函数只会删除头和尾的字符，中间的不会删除）如果strip()的参数为空，那么会默认山粗话字符串头和为的空白字符串( 包括\n, \t, \r 这些)
+并推导出lstrip()  和 rstrip() 一个去掉左边，一个去掉右边（头 & 尾）
+同时列表的索引 -1 代表了最后一个的索引
+importlib包提供import语句的实现，允许创建自己自定义的对象，可用于引入过程
+importlib.import_module 动态导入模块（分为绝对导入和相对导入）
+绝对 ： a.b.c
+相对： .b.c packagw='a'
+总之最后读取：
+    ConfigParserModule = {
+        'toml': 'pip._vendor.pytoml',
+    }
+最后反正就是 configs 把 webapp.toml 里的配置信息给读出来了= =
+
+Ps 临时想起来查了几个小技巧
+①not in  ：  a=2 ; a not in [2, 3, 4] ; >False
+②c if a else b #这里一定要存在b，且b不为pass    (a = 3) if (2 > 3) else (4) ; a ; 4
+(a = 3) if (2 < 3) else (4) ; a ; > 3
+③ [ fun(a) for a in [...] ]      [a+1 for a in [2, 3, 4, 5, 6]] ; >[3, 4, 5, 6, 7]
+④ a,b = b,a    a=1 ; b = 2 ; a,b = b,a ; a>2; b>1
+
+address 和 port 猜测是从toml里读，如果没有的话就从默认里调用
+ handlers and engines  处理程序和引擎
+
+空载运行的时候
+handler为空，engines处的 ‘db’ 开始报错 == 
+ 根据代码提示，需要自己覆盖项目在  db 和 collection  去获得连接到 dbs 和tables
+
+先跳过此处， 在完成处理程序以及引擎加载后， 开始创建ssl上下文关系
+Ps SSL（Secure Sockets Layer 安全套接层）
+如果settings 里面存在 ssl 则加载ssl库
+Ps ssl底层库使用openssl，做了面向对象化的改造与简化，
+
+如果有此设定就开启ssl认证，没有则为空
+
+Ps dev到底是什么意思
+dev与Beta（测试版）意思相似，意思为“开发中的版本”。但是相比于beta版本，dev版本可能出现的更早，也意味着通常会比beta版本的软件更加不稳定
+
+最后第二个函数 parse_command_line_options 返回 （address, port）, ssl_ctx, init_kwargs 
+init_kwargs 中的 **seting应该是将 setting 中剩余参数统统输入回来
+ 
+随后开始make_app(**kwargs)
+make_app 有四味参数，形式同 init_kwargs  engines默认为空 debug默认为空
+直接返回 tornado.web.Application 函数 
+
+Ps 在前几日看简单案例的时候，一个app可以这样定义
+app = tornado.web.Application([
+    (r"/", IndexHandler)
+], **settings)
+就可以完成一个最简单的页面
+Application对象负责全局配置，包括将请求映射到处理程序的路由表
+debug为几种调试模式的简写
+default_handler_class和default_handler_args ： 如果没有找到其他匹配项，将使用次相互的处理程序 ； 使用它可以自定义404页面
+handlers为具体处理方法
+
+之后看了看例子，并没有get到怎么覆盖的点，
+遂决定再从头浏览一遍，
+__all__ 是一个字符串list，用来定义模块中对于 from xxx import * 时要对外到处的符号(也就是即将要暴露的接口)，但是它只对import * 起作用，对 from xxx import xxx不起作用
+Ps python没有像java，C++等的可见性控制，如java的private、protect、public。
+python只能依靠约定来对控制可见性。分为包内和包外可见小。包外的可见效时通过在包里面的__init.py__里面设置__all__来控制包内的对象和方法等对包外可见性
+例如： 如果设置了__all__，就相当于一个白名单，若这个包内的类或者方法不在 __all__里面，就相当于没有上白名单，外面的包就不能正常使用没有在白名单上的方法和类
+
+
+-------------------
+万事具备只差最后一步了 ： 到底怎么把db和 collection给覆盖了
+
+功夫不负有心人，在handlers中HandlerBase中发现了db和collection，和patterns = ()
+两个函数都是 raise NotImplementedError
+Ps raise可以实现报错的功能，报错的条件可以由程序员自己去定制。
+这个的中文解释为 NotImplementedError 尚未实现的方法
+Ps import 一个 as 多个是什么用法
+
+
+发现饿了test_app.py
+又回到toenado的官方文档敲了一遍 hello，world .py
+
+掉入了坑中 - - 测试 tornado.testing 必须使用命令行 -m 传参才行 
+
+unittest为python3自带参数
+
+----------------------------------------------------------------
+
+极度生气 ，继续研究unittest模块
+首先研究各个类之间的继承问题：
+
+class AsyncTestCase(unittest.TestCase):
+class AsyncHTTPTestCase(ASyncTestCase):
+class AsyncHTTPSTestCase(AsyncHTTPTestCase):
+逐级上升
+Ps 首先对最底层的unittest.TestCase进行学习，
+测试用例类，我们做单元测试时编写的测试用例就是继承TestCase类来实现具体的测试用例
+        Pss unittest时python内置的一个单元测试框架，其中
+TestCase ： 测试用例，一个TestCase的实例就是一个测试用例。那么什么时测试用例呢？就是一个完整的测试流程，包括了测试前的准备环境的搭建(setUp),执行测试代码(run),以及测试后环境的还原(tearDown)。单元测试的本质也就在这里，一个测试用例时一个完整的测试单元，通过运行这个测试单元，可以对某些问题进行验证。
+TestSuite：测试套件，就是多个测试用例集合在一起
+TestRunner ： 测试执行，用来执行测试用例，其中的run(test)会执行TestSuite / TestCase
+TestFixture ： 测试脚手；对一个测试用例环境的搭建和销毁，是一个fixture，通过覆盖TestCase的setup() 和 tearDown()方法来实现。那么这个有啥用呢！？？
+比如说在这个测试用例中需要访问数据库，把么可以在serUp()中建立数据库连接以及一些初始化,在tearDown()清除在数据库中产生的数据，然后关闭连接。
+注意：tearDown的过程非常重要，要为以后的TestCase留下一个干净的环境
+去跑个脚本认识一下
+测试流程：
+①谢海TestCase ： 一个class继承unittest.TestCase，就是一个测试测试用例，其中有多个以test开头的方法，那么每一个这样的，在load的时候会变成一个TestCase实例。如果一个class中有四个test开头的方法，最后load到suite中的时候则有四个测试用例。
+②由TestLoder加载TestCase到TestSuite
+③由TextTestRunner来运行TestSuite，运行的结果保存在TextTestResult中
+Ps 
+a    通过命令行或者unittest.main()执行时，main会调用TextTestRunner中的run来执行，或者可以执行通过TextTestRUnner来执行用例- -
+b    Runner执行时，默认将结果输出到控制台，我们可以设置其输出到文件，在文件中查看结果，也可以通过HTMLTestRunner将结果输出到HTML
+
+敲了一遍unittest，就是挨个定义 test_XXX ，然后在里面写assertEqual预期测试
+assertNotEqual非预期测试，将预期测试补全后使用
+unittest.main()
+
+
+
+
+
