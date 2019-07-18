@@ -1,0 +1,295 @@
+----------------------------------------------------------------
+
+极度生气 ，继续研究unittest模块
+首先研究各个类之间的继承问题：
+
+class AsyncTestCase(unittest.TestCase):
+class AsyncHTTPTestCase(ASyncTestCase):
+class AsyncHTTPSTestCase(AsyncHTTPTestCase):
+逐级上升
+Ps 首先对最底层的unittest.TestCase进行学习，
+测试用例类，我们做单元测试时编写的测试用例就是继承TestCase类来实现具体的测试用例
+        Pss unittest时python内置的一个单元测试框架，其中
+TestCase ： 测试用例，一个TestCase的实例就是一个测试用例。那么什么时测试用例呢？就是一个完整的测试流程，包括了测试前的准备环境的搭建(setUp),执行测试代码(run),以及测试后环境的还原(tearDown)。单元测试的本质也就在这里，一个测试用例时一个完整的测试单元，通过运行这个测试单元，可以对某些问题进行验证。
+TestSuite：测试套件，就是多个测试用例集合在一起
+TestRunner ： 测试执行，用来执行测试用例，其中的run(test)会执行TestSuite / TestCase
+TestFixture ： 测试脚手；对一个测试用例环境的搭建和销毁，是一个fixture，通过覆盖TestCase的setup() 和 tearDown()方法来实现。那么这个有啥用呢！？？
+比如说在这个测试用例中需要访问数据库，把么可以在serUp()中建立数据库连接以及一些初始化,在tearDown()清除在数据库中产生的数据，然后关闭连接。
+注意：tearDown的过程非常重要，要为以后的TestCase留下一个干净的环境
+去跑个脚本认识一下
+测试流程：
+①TestCase ： 一个class继承unittest.TestCase，就是一个测试测试用例，其中有多个以test开头的方法，那么每一个这样的，在load的时候会变成一个TestCase实例。如果一个class中有四个test开头的方法，最后load到suite中的时候则有四个测试用例。
+②由TestLoder加载TestCase到TestSuite
+③由TextTestRunner来运行TestSuite，运行的结果保存在TextTestResult中
+Ps 
+a    通过命令行或者unittest.main()执行时，main会调用TextTestRunner中的run来执行，或者可以执行通过TextTestRUnner来执行用例- -
+b    Runner执行时，默认将结果输出到控制台，我们可以设置其输出到文件，在文件中查看结果，也可以通过HTMLTestRunner将结果输出到HTML
+
+敲了一遍unittest，就是挨个定义 test_XXX ，然后在里面写assertEqual预期测试
+assertNotEqual非预期测试，将预期测试补全后使用
+unittest.main() <-- 有verbosity参数可以控制输出的错误报告的详细程度，默认为1，如果设为0，则不输出每一个样例的执行结果 ； 如果设为2，则输出更详细的执行结果
+组织TestSuite
+a 诸多测试用例的顺序，哪个先执行，哪个后执行？
+b 如果测试文件有多个，怎么进行组织？
+TestLoder加载TestCase的几种方法
+
+那么从头继续看第一个函数 AsyncTestCase 检测。IOLoop异步代码
+在此基础上搭建了AsyncHTTPTestCase测试。启动HTTP服务器的测试用例，子类必须覆盖get_app() 并在其中返回
+tornado.web.Application ( 或其他HTTPServer进行测试 )
+
+皇天后土，终于可以正常运行test_app的样例测试了
+多加入了
+import unittest
+if __name__ == "__main__":
+    unittest.main()
+便可以对问题进行测试了
+
+
+那么接下来解决下一个问题，如何将除简易函数HelloWorldHandler之外的覆盖了db和collection的函数加载到问题当中
+
+首先回到问题本身，OrderHandler中的装饰器 @cached_property
+如果没记错的话，装饰器是为了在后续函数中便于加入参数而做的一种加参封装
+def db():  返回自身的引擎
+def collection 但会自身db下的orders
+
+cached_property  中 __init__ 特殊方法（构造方法），会在该类实例化的时候自动调用；可以后参数，参数通过
+__init__()传递到类的实例化操作上
+utils中的类 cached_property 
+__init__规定了三类参数 doc func name
+然后又调用了没太看懂的属性描述器，属性描述符的原理利用的是抽象的方法，将多个字段的共同特性抽出来，每个字段都会使用这个特性从而达到了节省代码的目的
+
+class Celsius():
+    #摄氏温度(描述符类)
+    def __init__(self, value = 26.0):
+        #摄氏温度初始化赋值
+        self.value = float(value)
+
+    def __get__(self, instance, owner):
+        return self.value
+
+    def __set__(self, instance, value):
+        self.value = float(value)
+
+
+class Fahrenheit():
+    #华氏温度（描述符类）
+    def __get__(self, instance, owner):
+        return instance.cel*1.8 + 32
+
+    def __set__(self, instance, value):
+        instance.cel = (float(value) - 32)/18
+
+
+class Temperature():
+    #（被描述类）
+    cel = Celsius() #描述符类指派到被描述符类的对象
+    fah = Fahrenheit()
+    
+temp = Temperature()
+敲了一段测试了一下，华氏和摄氏都是描述符，都是对下面的被描述符类进行描述的，描述的是cel和fah两个属性参数
+cel和fah两个被描述符的属性就是相当于是Celsius和Fahrenheit的实例化对象
+当temp = Temperature()的时候就是被描述符的实例化
+temp.cel被Celsius()所描述，那么就会回到描述类的定义处并初始化一个值，传过去就是属性的值 26
+temp = 30就是对 被描述对象的赋值，赋值操作就是Celsius()的__set__操作，
+temp.fah 由于之前以后得到了cel.value=30，随后进入Fahrenheit()中进行获取操作， 其中instance是实例化拥有着temp，那么返回的就是temp.cel*1.8 + 32 ,因之前temp.cel之前被赋值为30，所以在这里的计算结果为86.
+同理接下来的输入输出
+综上，判断出初步结论，  cached_property仅仅是一个描述符类， 拥有被实例化是 __init__的权力以及被调用时 __get__的权力
+实现 get 、 set 、 delete 三者其中之一便成为属性描述符，具体可以控制属性操作时的一些行为
+只要具有get就是 描述符类
+如果只实现__get__称之为非数据属性描述符；
+只有同时实现 __get__ 和 __set__ 才称之为数据属性描述符
+
+cached_property是个非数据属性描述符妥妥的，若自身实例不存在则返回self ； 
+若实例中不存在self.name, 则 instance.(self.name) = self.func(instance) ; 返回 getattr
+Ps  hasattr()判断对象是否包含对应的属性
+setattr()用于设置属性值，该属性必须存在 ； setattr(object(对象), name(字符串), value(属性值))
+setattr(People, 'x', 111) 等同于 Prople.x = 111
+getattr()用于返回一个对象的属性值 ； getattr(object(对象), name(字符串,对象属性), default(默认返回值))
+若不设置默认返回值，在没有对应属性是，将触发 AttributeError   最终返回对象的属性值
+
+最重要的往往也最容易被忽视，现在就要对tornado.options.define 和 .options 进行探究
+options必须在使用之前同tornado.options.define定义，通常位于模块顶部
+被定义的options接下来可以被toanado.options.options访问
+
+应用程序的主方法不需要直到整个程序中使用的全部选项；他们都是在加载模块时自动加载的。但是必须在解析命令行之前导入所有定义选项的模块
+主程序能解析命令行或者解析一个配置文件可以使用 parse_command_line或者parse_config_file
+tornado.options.parse_command_line() 或者 tornado.options.parse_config_file("/etc/server.conf")
+转换命令行参数
+
+输入python -m rezt.app --dev=True即可绕过 ‘db’ 但是在后续K的 engine_connect(**cfg)被截断说 ** 必须时 一个 mapping(映射)，而不是字符串
+Ps python中只要一种标准映射类型 ： 字典dict 
+** agrs ： 将参数以字典的形式导入
+
+engine_connect 引擎连接(协议， **kwds)
+Defaults.DatabaseConnector[protocol] ； 其中具体配置如下
+    DatabaseConnector = {
+        'mongodb': 'pymongo:MongoClient',
+        'aiomongodb': 'motor.motor_tornado:MotorClient',
+        'redis': 'rezt.engine_adapters:Redis',
+        'aredis': 'aredis:StrictRedis',
+        'aioamqp': 'rezt.engine_adapters:AioAmqp',
+        'sqlite': 'rezt.engine_adapters:SQLite',
+    }
+之后使用instantiate 按路径加载RequestHandler
+
+load_db_engines()返回的是一个字典 k ： engine_connect
+python 中 A for B in C: 例如
+Y =  [ [ int(x1+x2 < 1) ] for (x1, x2) in X ]
+对于 X 中每一组元素(x1, x2)遍历一遍，当满足(x1 + x2 < 1)时，就把这个布尔值转换成int存在[  ] 中，作为Y的一个元素
+但是字典的items方法以列表返回可遍历的（键、值）元组数据
+要想加载成功
+唯有大字典套小字典方可一试
+motor发动机
+
+------------------------------------------------------------------
+
+一条快乐的分割，强行注释代码直接忽略与数据库相连的过程
+
+
+再继续分析motor为默认 python tornado mongoDB相互之间连接的一款功能齐全，无阻塞的驱动程序
+Motor提供了以及基于协程的API，用于对mongoDB进行非阻塞访问
+其中MotorClient 为 与mongoDB连接的类
+class motor.motor_tornado.MotorClient( * args, ** kwargs)
+再host : port 创建与单个mongoDB实例的新连接
+
+
+！！！！！ mongoDB不支持Windos平台上的async现象，并将在该平台上引发异常
+先停 0_0 再看看字典加载出错的那里，怎么可能会有
+
+
+首先加载configs["db-dev" 或者 "db"]
+加载出来的对象类型为 字典
+随后执行 load_db_engines --> 将引擎连接的字典中每个元素拆成两份
+将后半部分使用 engine_connect 以字典为参数继续进行数据库连接，首个参数是连接协议，后续以字典形式传输
+然后以协议连接方式的形式（motor.motor_tornado:MotorClient）(字典形式)调用instantiate(只支持完成的模组class路径)
+
+随后engine_connect将多余的字典
+def aaa(x, y):
+    res = (x + y)
+    return res(y)
+
+b = aaa(2, 3)
+会返回 ： 'int' object is not callable函数名重用或者是变量名重用
+
+
+如果字典的第一个元素不是字符串，那么直接将此元素返回
+
+否则 sep = ①“ : ”   if " : " in symbol
+                   ②sep
+rpartition() 方法类似于 partition() 方法，知识该方法是从目标字符串的末尾也就是右侧开始搜索分割符
+如果字符串包含指定分隔符，则返回一个三元的元组，第一个为分隔符左侧子串；第二个为分隔符分身；第三个为分隔符右侧子串
+然后根据分隔符 symbol.rpartition(sqp)分割字符串 -->三子串分别为 module ； _ ； name
+随后mod = importlib.import_module(module)
+Ps 根据字符串形式导入模块，并且找到其中的类并执行
+importlib.import_module(module) 动态导入模块， 具体作用有些类似于python -m
+
+instantiate的最终效果就是将你选择的连接方法的模块动态导入，最后返回其中的模组名称
+若失败则会触发导入错误1，并返回在对应的后端命令行上
+随后尝试使用getattr(mod, name)
+getattr()用于返回一个对象的属性值 ； getattr(object(对象), name(字符串,对象属性), default(默认返回值))
+若不设置默认返回值，在没有对应属性是，将触发 AttributeError   最终返回对象的属性值
+------直接向上引用自己的笔记 - -
+
+
+instantiate成功返回后 connector就被赋值为刚刚加载的模组名称   
+engine_connect() 将模组名称 和暂时多余的字典一同返回给 .....
+load_db_engines 中的字典.....    循环完成以后统一返回完成engines的加载
+
+随后就可以被正常调用了 
+
+先研究数据库的连接方法吧......
+
+
+        ----对象层次结构----
+同PyMongo一样，Motor表示具有四级对象层次结构的数据
+①MotorClient ： 代表一个mongod进程（或集群）。明确创建其中一个客户端对象，将其连接到正在运行的mongod或mongods，并在应用程序的生命周期中使用它
+②MotorDatabase ： 每个mongod都有一组数据库(磁盘上不同的数据文件集)您可以从客户端获取对数据库的引用
+③MotorCollection ： 数据库有一组包含文档的集合；您从数据库中获取对集合的引用
+④执行find() 上MotorCollection得到一个MotorCursor，它代表组匹配查询的文档
+
+创建一个客户，连接到mongod并侦听默认主机和端口
+client = motor.motor_tornado.MotorClient()
+主机和端口可由用户自己指定
+client = motor.motor_tornado.Motor('localhost', 27017)
+
+Motor还支持连接URI
+client = motor.motor_tornado.MotorClient( 'mongodb://localhost:27017' )
+连接到副本集 ( connect to a replica set like )
+client = motor.omtor_tornado.MotorClient( 'mongodb://host1,host2/?replicaSet=my-replicaset-name' )
+
+获取数据库
+两种风格  点表示法 或括号表示法，创建对于数据库的引用不会执行 I / O，也不需要await表达式
+db = client.test_data_database()
+db = client[ 'test_database' ]
+
+现在！我们可以创建一个客户端并且获得一个数据库了。我们已然准备好启动一个使用Motor的tornado程序了
+
+db = motor.motor_tornado.MotorClient().test_database
+
+application = tornado.web.Application([
+    (r"/", MainHandler)
+]， db = db)
+
+application.listen(8888)
+tornado.ioloop.IOLoop.current().start()
+Ps 两点注意事项
+①MotorClient构造函数实际上并没有连接到服务器；当尝试第一期操作的时候，客户端才会启动连接
+②将数据库作为db关键字参数传递到Application，使其可用于请求处理程序
+
+但是为每个请求创建一个新客户端对象将会是一个可怕的性能成本。在应用程序启动时创建客户端，并在进程的生命周期内重用该客户端。具体方法为
+class MainHandler(tornado.web.RequestHandler):
+    def get(self):
+        db = self.setting[ 'db' ]
+
+
+Tornado HTTPServer类的start()方法是一种简单的方法用来分叉多个Web服务器并使用机器的全部CPU。
+但前提是您必须创建MotorClient后分叉
+
+application = tornado.web.Application([
+    (r'/', MainHandler)
+])
+
+server = tornado.httpserver.HTTPServer(application)
+server.bind(8888)
+
+#Forks one process per CPU   榨干CPU
+server.start(0)
+
+#Now, in each child process, create a MotorClient
+application.setting[ 'db' ] = MotorClient().test_database
+IOLoop.current().start()
+
+获取集合
+一个集合是一组存储在mongoDB中的文档，并且可以认为是大致在关系数据库中的表的当量。获取Motor中的集合与获取数据库的工作方式相同：
+collection = db.test_collection
+collection = db[ 'test_collection' ]
+就像获取对数据库的引用一样，获取对集合的引用不会产生I / O 并且不需要await表达式
+
+与PyMongo一样，Motor使用Python字典表示MOngoDB文档。要存储在MongoDB中的文档，应该调用inisert_one()在await表达式：
+
+async def do_insert():
+    document = {'key' : 'value'}
+    result = await db.test_collection.insert_one(document)
+    print(f"result {repr(result.inserted_id)} ")
+
+IOLoop.current().run_sync(do_insert)
+> result ObjectId('......')
+
+此外Motor的典型初学者错误是 : 在循环中插入文档，而不是等待每一个插入在开始下一个之前完成
+上面一句不是人话....新手的常见错误是循环插入，不等当前动作结束就开始下一条。
+年轻人，要有耐心！
+for i in range(2000):
+    db.test_collection.insert_one({' i ' : i})
+
+在PyMongo中，这将使用单个套接字依次插入每个文档
+Motor会尝试立即运行所有的insert_one()操作。  （科学狂人的XJB实验计划）
+上述过程需要 max_pool_size 打开连接到MongoDB的套接字，会对客户端和服务器造成负担。要确保所有的插入会按照预定顺序运行，可以使用 await
+
+async def do_insert():
+    for i in range(2000):
+        await db.test_collection.insert_one({' i ' : i})
+
+IOLoop.current().run_sync(do_insert)
+
+为了获得更好的性能，大量插入文档可以使用 insert_many()
+
