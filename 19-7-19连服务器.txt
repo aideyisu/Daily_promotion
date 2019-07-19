@@ -1,0 +1,315 @@
+同PyMongo一样，Motor表示具有四级对象层次结构的数据
+①MotorClient ： 代表一个mongod进程（或集群）。明确创建其中一个客户端对象，将其连接到正在运行的mongod或mongods，并在应用程序的生命周期中使用它
+②MotorDatabase ： 每个mongod都有一组数据库(磁盘上不同的数据文件集)您可以从客户端获取对数据库的引用
+③MotorCollection ： 数据库有一组包含文档的集合；您从数据库中获取对集合的引用
+④执行find() 上MotorCollection得到一个MotorCursor，它代表组匹配查询的文档
+
+创建一个客户，连接到mongod并侦听默认主机和端口
+client = motor.motor_tornado.MotorClient()
+主机和端口可由用户自己指定
+client = motor.motor_tornado.Motor('localhost', 27017)
+
+Motor还支持连接URI
+client = motor.motor_tornado.MotorClient( 'mongodb://localhost:27017' )
+连接到副本集 ( connect to a replica set like )
+client = motor.omtor_tornado.MotorClient( 'mongodb://host1,host2/?replicaSet=my-replicaset-name' )
+
+获取数据库
+两种风格  点表示法 或括号表示法，创建对于数据库的引用不会执行 I / O，也不需要await表达式
+db = client.test_data_database()
+db = client[ 'test_database' ]
+
+现在！我们可以创建一个客户端并且获得一个数据库了。我们已然准备好启动一个使用Motor的tornado程序了
+
+db = motor.motor_tornado.MotorClient().test_database
+
+application = tornado.web.Application([
+    (r"/", MainHandler)
+]， db = db)
+
+application.listen(8888)
+tornado.ioloop.IOLoop.current().start()
+Ps 两点注意事项
+①MotorClient构造函数实际上并没有连接到服务器；当尝试第一期操作的时候，客户端才会启动连接
+②将数据库作为db关键字参数传递到Application，使其可用于请求处理程序
+
+但是为每个请求创建一个新客户端对象将会是一个可怕的性能成本。在应用程序启动时创建客户端，并在进程的生命周期内重用该客户端。具体方法为
+
+class MainHandler(tornado.web.RequestHandler):
+    def get(self):
+        db = self.setting[ 'db' ]
+
+
+Tornado HTTPServer类的start()方法是一种简单的方法用来分叉多个Web服务器并使用机器的全部CPU。
+但前提是您必须创建MotorClient后分叉
+
+application = tornado.web.Application([
+    (r'/', MainHandler)
+])
+
+server = tornado.httpserver.HTTPServer(application)
+server.bind(8888)
+
+#Forks one process per CPU   榨干CPU
+server.start(0)
+
+#Now, in each child process, create a MotorClient
+application.setting[ 'db' ] = MotorClient().test_database
+IOLoop.current().start()
+
+获取集合
+一个集合是一组存储在mongoDB中的文档，并且可以认为是大致在关系数据库中的表的当量。获取Motor中的集合与获取数据库的工作方式相同：
+collection = db.test_collection
+collection = db[ 'test_collection' ]
+就像获取对数据库的引用一样，获取对集合的引用不会产生I / O 并且不需要await表达式
+
+与PyMongo一样，Motor使用Python字典表示MOngoDB文档。要存储在MongoDB中的文档，应该调用inisert_one()在await表达式：
+
+async def do_insert():
+    document = {'key' : 'value'}
+    result = await db.test_collection.insert_one(document)
+    print(f"result {repr(result.inserted_id)} ")
+
+IOLoop.current().run_sync(do_insert)
+> result ObjectId('......')
+
+此外Motor的典型初学者错误是 : 在循环中插入文档，而不是等待每一个插入在开始下一个之前完成
+上面一句不是人话....新手的常见错误是循环插入，不等当前动作结束就开始下一条。
+年轻人，要有耐心！
+for i in range(2000):
+    db.test_collection.insert_one({' i ' : i})
+
+在PyMongo中，这将使用单个套接字依次插入每个文档
+Motor会尝试立即运行所有的insert_one()操作。  （科学狂人的XJB实验计划）
+上述过程需要 max_pool_size 打开连接到MongoDB的套接字，会对客户端和服务器造成负担。要确保所有的插入会按照预定顺序运行，可以使用 await
+
+async def do_insert():
+    for i in range(2000):
+        await db.test_collection.insert_one({' i ' : i})
+
+IOLoop.current().run_sync(do_insert)
+
+为了获得更好的性能，大量插入文档可以使用 insert_many()
+
+------------------------------------------------------------------------------
+
+Motor 与 PyMongo 之间的区别
+主要区别：
+Motor提供了单一客户类 ： MotorClient。不同于PyMongo的 MongoClient， 
+Motor的Client 在被实例化的时候不会在后台开始收集，只会在你第一次操作要求收集的时候才会开始运行
+同时，Motor几乎覆盖支持Pymongo的每一种功能；但它网络 I / O 的操作是协程的
+不支持多线程(thread)和分叉(fork)。Motor被用于单线程Tornado application
+
+Ps 分叉是UNIX术语，当分叉一个进程（运行着的程序），基本上是复制了它。分叉后的两个进程都从当前的执行点继续运行，且每个进程都有自己的内存副本(变量)；原进程称为父进程；复制出来的称为子进程。
+可以想象为平行宇宙。分叉操作在时间线(timeline)上创造了分支，通过查看fork() 函数的返回值可以判断原进程和子进程。因此他们执行的操作并不相同
+在一个使用了分叉的服务器中中，每个端户端连接都利用分叉创造子进程。父进程继续监听新的连接，同时子进程处理客户端。当客户端的请求结束时，子进程就退出了。可见分叉进程是并行运行的，客户端之间不必相互等待！
+但是分叉更加耗费资源( 每个分叉出来的进程都需要拥有自己的内存 )，此时我们有另外一个选择：线程
+线程是轻量级的进程 or 子进程。所有的线程都存在于相同的（真实存在）进程中共享内存。
+但是消耗下降会伴随另外一个缺陷：必须确保变量之间不会冲突，同时间修改同内容会造成混乱。
+上述问题都可以归结为同步问题。
+
+=========通哥时间==========
+
+解决了数据库打不开的问题，db-dev在解析的时候会层层解析 直接item()分解只能得到两个元组。
+例如配置文件中 protocal ， aiomongodb 两部分元组
+将[db-dev] 修改为 [db-dev.db]可以使得在item()函数解析的时候
+解析为db 和 {“ protocol ” ： “ aiomongodb ”, " host " : " localhost "} 两部分
+
+反思 ： 出现这个问题的原因是在整体浏览toml文件类型的时候，只关注到了[ db-dev ]一级分类
+并没有再多想一步 [ db-dev.db ]为二级分类的可能性
+当时在这种问题上没有特意停留，在后续遇到需要字典类型但自己只有元组类型的问题时，也没有想到这种用法，
+改进 ： 结合这几天的心得体会，我认为出现这种问题在心态上时没有完全沉下心来仔细阅读文档。
+在阅读诸多官方文档的时候，难免会出现这种疏漏。遇到问题不要害怕，要勇于返回去一点一点看，肯定因为自己的知识有疏漏，才会导致一些问题出现。 基本功很重要！
+这几天倒是养成了一个习惯，直接去看官方文档和源码
+
+============================
+
+toml文件：
+上网先看到了吐槽。
+ini ： 表达能力不够，无法表发列表等数据结构；没有官方注释符号，虽然一般以分号作为注释符号
+json ： 没有官方注释符号，虽然某些第三方包提供了注释结构
+yaml ： 语法比较复杂 ， 可读性不高
+TOML时前Github CEO，在2013年创建的语言，其目标时称为一个小规模的易于使用的语义化的配置文件格式。
+TOML被设计为可以无二义性转换为一个哈希表(Hash table)
+
+官方注释为 井号 将该行余下的部分标记为注释
+键值对 TOML文档最基本的构成区块时键/值对
+键名在等号的左边而数值在右侧 ； 键名和键值周围的空白会被忽略 ； 三者必须在同一行(部分值可跨多行)
+数值必须为 字符串，整数，浮点数，布尔值，日期时刻，数组或者时内联表。不指定数值时非法的
+
+键名：键名可以时裸露的 or 用引号引起来的 or 点分隔的
+①裸键( Bare keys ) ： 只能包含ASCII字母，ASCII数字，下划线和短横线
+裸键允许仅由纯ASCII数字构成，例如 1234 ；但是会被理解为字符串    1234 = “ value ”
+②引号键(Quoted keys) ： 遵循与基本字符串或者字面量字符串相同的规则并允许你使用更为广泛的键名
+裸键中不能为空，但是空引号键是被允许的 ( 但是不建议如此 )   '' = ‘black’  合法但是不建议
+③点分割键(Dotted keys)通过一系列通过点相连的裸键或是引号键。
+这允许了你将相近属性放在一起 
+name = "Orange"
+physical.color = "orange"
+physical.shape = "round"
+site."google.com" = true
+等价于JSON的如下结构
+{
+    “name” : "Orange",
+    "physical" : {
+        "color" : "orange",
+        "shape" : "round"
+    },
+    "site" : {
+        "google.com" : true
+    }
+}
+点分隔符周围的空白会被忽略，但建议不要使用任何不必要的空白
+不能多次定义同一个键 ； 一个键还没有被定义过，就可以对它和他的下属的键名赋值
+（感觉有点像数据结构里面的树，所有的定义都存储在页节点）
+直接对一个键定义就好像树里只有一个节点，既是根节点，有时叶子节点
+
+[ db-dev ] 称为比哈希表或字典，是键值对的集合。在方括号里并作为单独的行出现，
+在它下方直到下一个表或者文件结束都属于这个表的键值对。
+表的规则与键同名。
+
+------------------------------
+
+继 t/main.py 后
+tornado + mongodb 继续研究 ，因为开启了debug模式会对其余页面都报错并返回错误信息
+
+
+连接数据库 ： 
+
+class SqlStore(object):
+    def __init__(self, host, port):
+        self.host = host
+        self.port = port
+        self.connection = None
+
+    def getConnect(self):
+        if not self.connection:
+            # 获取数据库连接
+            self.connection = pymongo.MongoClient(
+                host = self.host, port = self.port
+            )
+        return self.connection
+
+    def getDb(self, name):
+        client = self.getConnect()
+        #获取名字为name的数据库
+        db = client.get_database(name)
+        return db
+
+client = SqlStore(host = "localhost", port = 27017)
+
+
+@property装饰器可以将一个直接访问的属性转变为函数触发式属性
+
+
+好，链接上服务器了！
+
+python字符串前缀 r''    r前缀相当于三引号，主要解决的式转义字符，特殊字符的问题，其中所有字符均视为普通字符
+
+最终在继 pymongo后 Motor也实现了对mongodb的增删改查操作。加以记录
+https://blog.csdn.net/zone_/article/details/83826344
+
+普通连接
+client = motor.motor_asyncio.AsyncIOMotorClient( 'mongodb://localhost:27017' )
+db = client.zfdb
+collection = db.test
+完成连接
+①增加一条记录
+async def do_insert():
+    document = {'name' : 'zone', 'sex' : 'boy'}
+    result = await db.test_collection.insert_one(document)
+    print(f" inserted { len( result.inserted_ids ) } ")
+loop = asyncio.get_event_loop()
+loop.run_until_complete(do_insert())
+
+②查找一条记录
+async def do_find_one():
+    document = await db.test_collection.find_one({ ' name ' : ' zone ' })
+    pprint.pprint(document)
+loop = asyncio.get_event_loop()
+loop.run_until_complete(do_find_one())
+
+③统计
+async def do_count():
+    n = await db.test_collection.count_documents({})
+    print(f" {n} documents in collection ")
+    n = await db.test_collection.count_document({' name ' : {' $gt ' : 1000} })
+    print(f" {n} documents where i > 1000 ")
+loop = asyncio.get_event_loop()
+loop.run_until_complete(do_count())
+
+④替换 将除id以外的其他内容全部替换掉
+async def do_replace():
+    coll = db.test_collection
+    old_document = await coll.find_one({' name ' : ' zone '})
+    print(f" found cocument: {pprint.pformat(old.document)} ")
+    _id = old_document['_id']
+    result = await coll.replace_one({' _id ' : _id}, {' sex ' : 'hanson_boy'})
+    print(f" replaced {result.modified_count} document ")
+    new_document = await coll.find_one({' _id ' : _id})
+    print(f" document is now {pprint.pformat(new_document)} ")
+loop = asyncio.get_event_loop()
+loop.run_until_complete(do_replace())
+
+⑤更新  更新指定字段，不会影响其他内容
+async def do_update():
+    coll = db.test_collection
+    result = await coll.update_one({'name' : 0}, {'$set' : {‘sex’ : 'girl'}})
+    print(f" 更新条数 ： {result.modified_count} ")
+    new_document = await coll.find_one({'name' : 0})
+    print(f" 更新结果 ： {pprint.pformat(new_document)} ")
+loop = asyncio.get_event_loop()
+loop.run_until_complete(do_update())
+
+⑥删除  删除指定记录
+async def do_delete_many():
+    coll = db.test_collection
+    n = await coll.count_documents({ })
+    print(f" 删除前有 {n} 条数据")
+    result = await db.test_collection.delete_many({' name ' : {'$gte' : 10}})
+    print(f" 删除后 { awaot coll.count_documents({ }) } ")
+loop = asyncio.get_event_loop()
+loop.run_until_complete(do_delete_many())
+
+后记： 批量增加
+async def do_insert():
+    result = await db.test_collection.insert_many([ {'name' : i, 'sex' : str(i + 2)} for i in range(20) ])
+    print(f" inserted {len(result.inserted_ids)} docs ")
+loop = asyncio.get_event_loop()
+loop.run_until_complete(do_insert())
+
+Ps pprint模块 ： 提供了打印出任何python数据结构类和方法
+pprint.pformat() #返回格式化的对象字符串
+
+要操作数据库，首先需要连接到数据库，一个数据库连接称为Connection
+在Python中操作数据库的时候，要首先导入数据库对应的驱动
+同时涉及到数据库地址池
+
+感觉大概有点理解。从宏观上再沿着程序运行顺序浏览一遍
+
+程序入口为app.py的main函数
+首先通过define定义三个命令行参数，个人测试需要加入 --dev=True 去加载本地测试用参数
+进入parse_command_line_options加载配置
+    首先configs加载目标为存放参数的位置 webapp.woml ； settings（因测试）进入[app-dev]参数
+address，port先后从setting中弹出 ， handlers根据弹出的request_handlers使用load_handlers加载
+load_handlers sum(instantiate(h).urlspecs() 针对处理中的每个元素 )
+instantiate将路径加载到RequestHandler，过程中使用了urlspecs()
+Ps sum函数的参数 sum(iterable[, start])   iterable可迭代对象，列表元组集合等  start，指定相加的参数，如果没有设置这个值，默认为0.     （所以将两个Handler叠加再一起了大概是）
+最后加载的参数为 engines（数据库参数） 首先再测试模式下调用 configs[db-dev]
+进入load_db_engines() 将大字典分解为小字典
+随后使用 engine_connect读取 Defaults.DatabaseConnector[protocol]   默认为 aiomongodb 模式异步加载
+并在加载后使用 isinstance 动态导入模组并返回模组名称
+    DatabaseConnector = {
+        'mongodb': 'pymongo:MongoClient',
+        'aiomongodb': 'motor.motor_tornado:MotorClient',
+        'redis': 'rezt.engine_adapters:Redis',
+        'aredis': 'aredis:StrictRedis',
+        'aioamqp': 'rezt.engine_adapters:AioAmqp',
+        'sqlite': 'rezt.engine_adapters:SQLite',
+    }
+
+再检测分否有安全选项 （默认没有）
+同时默认的处理类型为 handlers的NotFoundHandler
+NotFoundHandler 拥有函数 prepare 可以及时的提出错误404 并将错误原因定义为uri问题
+随后将所有加载的参数弹回，并利用刚才的参数开启监听
+接着开启IO循环完成整个框架的加载工作
