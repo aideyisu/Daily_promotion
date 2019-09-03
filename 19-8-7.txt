@@ -1,0 +1,320 @@
+
+Memcached是一个开源的高性能分布式内存对象缓存系统，是众多服务中提高Web扩展性的重要因素
+基于内存的key-value存储，用于存储小块数据，可以是数据库调用，API调用或者是页面渲染的结果
+简洁而强大。便于快速开发，减轻开发难度，解决了大数据量缓存的很多问题。
+一般的使用目的是，通过缓存数据库查询结果，减少数据库访问次数，以提高动态Web应用的速度、提高可扩展性
+
+-------------------------------------------------------------
+
+新任务，其余部分研究
+
+yaml中的spce含义：规格
+
+前置：
+{{ ... }} 装载一个变量，模板渲染的时候，会使用传进来的同名参数这个变量代表的值替换掉
+{% ... %} 装载一个控制语句
+{# ... #} 装载一个注释，模板渲染的时候会忽视这个中间的值
+
+jinja语法的动态include模板文件，宏文件中引用其他宏 -- include 
+可以把一个模板引入到另一个模板中，类似于把一个模板的代码copy到另外一个模板的指定位置
+类似于把一个模板的代码copy到另外一个模板的指定位置
+
+
+API调用的pyramid Web框架
+
+虽然可以使用pymongo来操作数据库，但是直接把对于数据库的操作写到脚本中会
+MongoEngine是一个对象文档映射器（ODM），相当于一个SQL的对象关系映射器（ORM）
+框架中就使用的是pymongo
+
+uswgi和WSGI是一种通信协议，是uWSGI服务器的独占协议，用于定义传输信息的类型，每一个uwsgi packet前4 byte为传输信息类型的描述，与QSGI协议是两种东西，据说该协议比fcgi协议快十倍。
+是服务器到服务端应用程序的通信协议，规定了怎么把请求转发给应用程序和返回。
+
+WSGI Web服务器网关接口。规定了服务器怎么把请求信息告诉给应用，应用怎么把执行情况回传给服务器，如此为之，服务器与应用都按照一个标准班时，只要实现了这个标准，服务器与应用可以随意搭配，灵活度大大提高。
+
+中间件csrf和auth认证
+①auth：
+登陆流程：用户登陆 --> 登陆验证成功 --> 生成用户token并保存在数据库
+大概就是处理登陆的流程
+②CSRF 跨站请求伪造 通常指恶意攻击者盗用用户的名义，发送恶意请求，严重泄露个人信息危害财产安全
+解决方法：
+使用csrf_token校验
+当客户端和浏览器向后端发送请求时，后端往往会在响应中的cookie设置csrf_token的值，可以使用请求钩子实现，在cookie中设置csrf_token.实际上时在session中存储了未加密的csrf_token，并且将生成的sessionID编号存储在cookie中
+ajax提交请求方式，在js里面，获取到cookie中的csrf_token，将其添加到ajax的请求头中
+
+helm charts 
+helm使用称为chart的包装格式。chart时一组描述相关的一组K8s资源的文件集合。
+
+K8s的yaml正式编写方法：
+apiVersion： 必选，版本号，例如v1
+kind： 必选，Pod
+metadata： 必选，元数据
+    name： 必选，Pod名称
+    namespace：必选，Pod所属的命名空间
+    labels： 自定义标签
+    annotations： 自定义注释列表
+spec： 必选，Pod中容器的详细定义
+
+
+在mist.api/blob/master/src/mist/api/clouds/controllers 中找到了一个控制，根据位置应该是云平台管理
+
+base.py 
+首先导入库引入了四个错误库
+首先加载log日志文件
+一 class ConnectionProxy  包含链接与断开通过 gc
+m初始化，断开连接与m销毁（销毁调用disconnection）
+二 class BaseController 为每个云或提供控制着提供抽象基类，这个基本控制器负责实例的初始化，链接缓存与关闭
+①m初始化（给定云就初始化控制器，否则加载之）  子类不该重写此方法，如果要更新，你应该拓展而不是重写
+②s链接（返回类似于licloud的云链接，仅由 链接 调用，增加了错误处理，所有子类必须实现此方法）
+③链接（这是一个包装器，一个错误处理程序，围绕云特定的 ' _connect ' ）子类不应覆盖or拓展此方法，相反必须覆盖 s链接。  在链接中首先尝试 s链接，依次尝试监听多种报错
+④名词链接  可作为属性访问，
+⑤检查链接  如果我们无法连接到云提供商，请提出异常。如果出现错误，就报错，大多数使用HTTP API的云提供商，调用 链接 没有真正建立一个链接，所以其子类应尝试真正连接
+大多情况，子类应当覆盖或扩展此方法
+⑥不连接  如名字
+Ps 啥事扩展
+
+Ps  Apache libcloud 云的统一界面，Libcloud是一个Python库，它隐藏了不通运提供程序API之间的差异，并允许您通过统一且易于使用的API管理不同的云资源
+具体分为以下几类：
+①计算 云服务器和块存储 libcloud.compute
+②存储 云对象存储和CDN libcloud.storage
+③均衡负载器 均衡负载器即服务 libcloud.loadbalancer
+④DNS DNS即服务 libcloud.dns
+⑤容器 容器虚拟化服务 libcloud.container
+
+ansible式一种自动化运维工具，可以
+
+==================================
+
+1. 整理输出功能：比如管理工具分为几类，分别完成什么功能。
+2. 整理输出流程，比如日志的传输流程是什么，在哪里产生，在哪里输出。
+3. 整理输出数据，比如mongodb中都有哪些表，字段有什么，什么含义等。
+4. 整理输出接口，比如REST API
+
+==================================
+
+代码管理分为三类：
+①ansible 有两个功能 第一个是预编译文件  当选择代码类型为inline时触发，会尝试使用yaml的load功能加载本地源码
+第二个功能是运行代码，调用父类的运行代码，并将结果返回
+②Executable可执行 仅有一个功能，预编译文件，当类型为inline，加载源码，且要以#！开头才可视为可运行模式代码
+③telegraf 首先telegraf（不仅是py脚本，因为telegraf可以运行任何类型的可执行文件）两个功能
+第一个是部署python插件
+第二个是部署&扩展py插件 从代码中 ，并且会调用第一个函数部署py插件
+
+
+---
+
+密钥管理 SSHKey 功能
+①产生generate  产生一个新RSA密钥对
+②连接associate  会调用父类的associate
+③断开disassociate  调用父类的disassociate
+④部署deploy 
+⑤解除部署undeploy  
+
+----------
+机器管理   ---- 对及其进行各种操作的API关系聚合
+①m初始化 self.machine = machine
+②开机start
+③关机stop
+④暂停suspend
+⑤恢复resume
+⑥重启reboot
+⑦析构函数destroy
+⑧移除remove
+⑨重新设定大小resize
+⑩重命名rename
+11.列出说明 list_snapshots
+12.创建说明 create_...
+13.移除说明  remove_...
+14.恢复说明  revert...
+15.undefine  销毁机器并删除XML信息
+16.连接密钥associate_key  使用sshkey与一个机器连接
+17.获取主机名 get_host 根据hostname public_ip private_ip 有哪个加载哪个
+18.更新update 重新创建而不是更新以后日期表因为更新他们看起来不会影响到实际日期
+19.使用ping探测 ping_probe 最终返回探测结果以及其字典
+20.ssh探测  ssh_probe 最终返回探测结果及其字典
+
+---------
+云平台管理
+五大模块以及两个基类
+①连接代理 -- 定义了断开连接时的操作以及析构函数
+②管理基类 -- 为每个云/提供者提供抽象类的关系 除了main，该基本控制器负责实例初始化，连接缓存和关闭
+
+基类分为
+①主基类，负责调用其余四个基类，完成对各个云平台的控制
+②云计算控制compute 处理可以再云端处理的一切操作，通常使用libcloud高级选项，大部分时间通过云模型访问，使用缩写表示' ctl '
+以连接阿里云的类为例。
+  ①s连接 
+  ②s重设机器大小
+  ③s获取本机机器列表
+  ④机器开销的机器列表
+  ⑤抓取镜像并列出镜像
+  ⑥默认镜像
+  ⑦s将ECS区域列为位置，嵌入有关区域的信息  _list_locations__fetch_locations
+在EC2中，一个地区的所有区域有相同名称，所以取而代之列出可用的区域
+  ⑧获取cpu情况并列出大小规模
+  ⑨获取名称并列出大小规模
+
+-所以说在云平台管理的问题上使用的是libcloud
+
+③云DNS 子控制器，通常对于每种不同的云类型，都有相应的DNS控制器定义。所有不同的类都继承了BaseDBSController并共享一个common接口，但某些控制器可能会例外而没有实现所有方法，某些云类型也可能不拥有自己DNS控制器，而是利用基础
+BaseDNSController给定云的主控制器初始化DNS控制器，即派生自BaseController
+
+通俗而言，就是有的云没有实现对应的DNS方法的存在，所以需要手动实现
+s连接
+_list_records__postparse_data
+( _create_reccord__prepare_args )
+
+④特定云的网络子类控制器。基类包含有关于网络和相关管理的所有功能。所有云提供商之间通用的对象
+任何不以下划线开头的方法和属性都是控制器的公共API
+因特定样本偏少，故研究其基类
+一  创建网络 create_network 
+接收一个network mongoengine对象，解析参数并填充云的特定字段，使用对应网络中的指定约束执行早期字段验证，最终保存网络对象道数据库中
+二  创建子网 create_subnet
+接收subnet mongoengine对象，解析提供的参数并填充所有特定于云的特定字段...
+最后将子网对象保存到数据库
+三  s create_subnet 执行处理子网创建的libcloud调用  +  创建子网（带命令行参数）
+四 list_networks
+五 list_cached_networks 列出特定于的数据库中的网络存储
+六 抓取网路工作并将其列出
+七 list_networks__codr_range  以CIDR表示法返回网络的IP范围 
+    该方法杯 list_networks内部调用，以便返回网络的CIDR（存在的话）
+八 _list_networks__postparse_network  代替 self.list_networks 解析libcloud网络对象
+    （需被重写）
+九 list_subnets 列出连接到云上存在网络的所有子网
+十 delete_network 删除网络 
+十一 delate_subnet 删除子网
+十二 _get_libcloud_network 返回libcloud网络的实例，此方法接收network mongoengine并查询libcloud对应的网络实例
+十三 _get_libcloud_subnet 返回libcloud网络实例，此方法姐搜subnet mongoengine对象并查询libcloud对应的子网实例
+
+Ps apache-libcloud 统一所有的一个界面。apache组织的顶级项目
+Python库，用于使用统一API与许多流行的云服务提供商进行交互
+隐藏了不同云提供程序api之间的差异，允许通过统一且易于管理的API管理不同云资源
+分为六个模块：
+①云服务器和块存储
+②云对象存储和CDN
+③负载均衡器作为服务
+④DNS作为服务
+⑤容器服务
+⑥备份作为服务
+
+
+============================
+
+
+concurrency 并发 其中使用了 mongoengine
+
+Ps 先学习一下...这个数据库怎么调用
+
+from mongoengine import *
+connect('test', host=' localhost ', port = 27017)
+import datatime
+class Users( Document ):
+    name = StringField(required=True, max_length = 200)
+    age = IntField(required=True)
+
+users = Users.objects.all() #返回所有的文档对象列表
+for u in users:
+    print(f" name : {u.name}  , age : {u.age}")
+
+
+.................保存文档
+
+from mongoengine import * 
+connect(' test ' , host = 'localhost', port = 27017 )
+import datatime
+class Users(Document):
+    name = StringField(required=True, max_length = 200)
+    age = IntField(required=True)
+users_1 = Users(
+    name = 'zz'
+    age = 11
+)
+user_1.save()
+print(f"{user_1.name}")
+user_1.name = 'zz11'
+user_1.save()
+print(f"{user_1.name}")
+
+................查询年龄 [ 10~30 ) 的，并按姓名排序
+
+user_search = Users.objects(age__gte=10, age__lt=33).order_by('name')
+for u in user_search:
+    print(f" name : {u.name}  , age : {u.age}")
+
+EmbeddedDocument 允许将文档存储在另一个文档中，
+----------------------------------------------华丽の分割线
+
+concurrency并发模块，
+里面只完成了一个类，PeriodicTaskInfo 周期性任务监控，（）
+
+def acquire lock获得运行锁定
+当运行时间超过300秒是报错，
+
+今天又学到一招   for  ...  else 前提潜舰，必须有break
+其具体执行顺序为，当for循环正常退出可执行else，若迭代对象因某某些原因提前退出迭代（例如break），则else子句不会被执行，程序将会直接跳过else子句，继续之后后面代码
+
+若正常执行则一个错都不报，直至退出
+
+def release lock解锁
+
+def task_runner上下文管理器运行更新模型状态的定期任务
+这个函数是一个上下文管理器，所以它意味着将会被用在一个with语句中
+例如   with task_runner()
+          do_somethin()
+
+Ps 介个函数是用来干什么的
+①当心使用锁去阻止相同任务的并发运行
+②跟踪最近一次的成功，最近依次的失败，并为次任务的失败次数计数
+
+def __str__(self):
+    return self.__class__.__name__, self.id
+
+---------------------------------------------------------
+
+conditions   --- 条件
+包含了一个基本条件个五个进阶条件1
+基本条件的抽象基类用作条件类型的通用接口
+①基类：
+meta媒介 = {
+    ‘allow_inheritance’:True
+}
+ctype = ' base '
+
+def update(self, *kwargs)
+    更新参数
+
+def q(self):
+    return me.Q()
+def as_dict(self):
+    return {' type '}
+
+class ConditionalClassMixin(object)
+通用条件mixin类，永续特定集合的不同查询集的处理程序。它从查询集列表构造查询，这些查询集与逻辑 & 运算符连接在一起
+四个方法
+①源条件
+②自我队列
+③获取源
+④获得ids
+
+class FieldCondition(BaseCondition):
+特定集合支持的任何字段的通用条件
+重写了 q 和 as_dict 两个函数
+ctype = ‘ field ’
+field = me.StringField(required=True)
+value = me.DynamicField(required=True)
+operator = me.StringField(required=True, default = 'eq', choices = ('eq', 'ne', 'gt', 'lt'))
+
+class TaggingCondition
+tags = me.DictField(required=True, default=lambda:{})
+
+class GenericResourceCondition  --> 用于查询任何资源的条件
+不是硬编码，而是根据ConditionalClassMixin的
+resource_model_name字段计算的
+
+class MechinesCondition --> 用于声明计算机ID列表
+
+计算机年龄与查询的条件 --> 适用于比这个年龄更老的机器
+
+
+
+
+
