@@ -1,0 +1,79 @@
+
+所以综合而言conditions就是做条件限定的一个模块
+其中 q 函数代表了查询条件，as_dict是将条件展示给大家
+
+dummy包含虚拟类和方法以说明开源社区版本中缺少的某些功能，
+例如基于角色的访问控制，
+所有的类和方法都属于本模块的一部分，所以本模块中的类和方法都以占位符的形式写入
+
+（无交互）hub集线器 ： 交换机将由集线器使用。对于服务端和客户端应该是相同的
+
+在key模组部分
+KEY类
+抽象基类对每一个密钥，机
+有id，name，owner，default，delated五个选项连接到数据库
+
+SSHKey 。是Key的子类
+有public和privatte额外两个选项连接到数据库中
+创建密钥对
+
+SignedSSHKey。是SSHKey的子类
+有certificate额外一个选项连接到数据库中
+检查整数是否是特定的ssh-rsa-cert并确保其自身是有效的RSA密钥对
+
+Ps paramiko模块，提供了基于ssh连接，进行远程登陆服务器执行命令和上传下载文件的功能(第三方库)
+
+在machines模块的models.py中大量连接至数据库 就是与服务器交互机器的各类活动数据
+密钥连接类
+Actions类 又是一堆连接...
+Minitoring 监控类
+Cost类 有hourly和monthly两类
+SSHProbe ssh探测器类
+Machine类 调用了机器管理部分的函数
+KeyMachineAssociation 
+
+misc模组有数据库交互
+ShellCapture以及 CloudImage云镜像
+
+network网络模块与数据库交互
+models.py中Network类 - 基本网络模型   与数据库大量连接连接连接
+基于Network有不同云的定制子网，Subnet - 基本Subnet模组
+
+ownership连接到服务器
+mixins中的OwnershipMixin 用于添加对资源所有者/创建者的引用
+
+poller中的models  
+PollingInterval类（轮询间隔）
+PollingSchedule类 时间表
+OwnerPollingSchedule
+CloudPollingSchedule
+
+portal门户..?  notification-通知
+models  NotificationOverride 用户覆盖阻止具有给定属性的通知
+UserNotification 用户的通知政策包含通知覆盖
+
+models 中 conditions.py 
+用于进一步过滤数据集的选择器 QueryFilter 
+规则主要的条件 QueryCondition 
+main.py中的Rule 基本规则的mongoengine模型。Rule类定义所有规则类型的基本模式，任何Rule子网的所有文档都将存储在同一个mongo集合中
+主要分为两类，任意规则和资源规则
+任意规则完全由用户定义，是用户可以自由地对任意数据执行任意查询
+资源规则使用 Mist.io UUID和标记定义。这种情况下用户必须明确指明目标的指标名称，聚合函数和资源，可以是UUID或标记
+允许在已知资源上更加轻松地进行警报配置，以较少弹性的查询表达式为代价
+
+location
+Abstract基类用作位置类型的通用接口，有三种不同类型，inLineLocation,GithubLocation和UrlLocation 三种不同接口
+以上三种均需要
+script 每个脚本的 attr mongoengine模型的抽象基类
+
+tag模组(标签) 
+
+users模组
+定义了安全转义使得在前端命令进入数据库操作的时候进入 HtmlSafeStrField
+读取字段时逃逸 < >
+用于存储特定用于IP白名单功能的类WhitelistIP
+SocialAuthUser 当用户使用相同的外部身份验证机制登陆或者注册时，用于存储身份验证提供
+Owner
+
+volumes模组 ： 基本块存储(卷)模型
+
