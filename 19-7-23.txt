@@ -1,0 +1,200 @@
+python 魔法函数 和 内置方法
+内置函数：
+Python中每个类系统上都有加上一些默认的内置方法，提供给系统调用该类的对象时使用
+例如：
+需要实例化一个对象的时候，需要调用该类的init方法；
+使用print打印一个类的时候，其实调用的时str方法等
+getattr setattr delattr 获取，设置，删除属性也均为内置函数
+内置变量：
+name : 标识模块的名字的一个系统变量。假如当前模块时主模块，此模块的名字就是" main "
+通过if判断这样就可以执行 " main "后面的主函数内容；加入此模块是被import调用的，那么此模块的名字问文件名字，这样if判断就会跳过“ main ”后面的内容
+file : 用来获得模块所在的路径，这可能会得到的时一个相对路径
+package : 当前文件为None，导入其他文件，指定文件所在的包，用 点 ‘ . ’分割
+doc : 文件注释
+
+魔法函数 ： 
+python中以双下划线开始和结束视为魔法函数( 不可以自己定义 )
+调用实例化的对象方法时可以自动调用魔法函数( 感觉不不要显示调用的都算 )
+在自己定义的类中，可以实现之前的内置函数
+比如下面比较元素sorted时使用的It (self, other) : 判断self对象是否小于other对象
+
+class Myvector(object):
+    def __init__(self, x, y):
+        self.x = x
+        self.y = y
+    def __add__(self, other_instance):
+        re_vector = MyVector(self.x + other_instance.x,  self.y + othrt_instance.y)
+        return re_vector
+    def __str__(self):
+        return f" x : {self.x}  y : {self.y} "
+
+first_vec = MyVector(1, 2)
+second_vec = MyVector(2, 3)
+print(first_vec + second_vec)
+
+魔法函数的作用 ： 魔法函数可以为你写的类增加一些额外功能便于读者理解
+举个生活中的例子
+我们定义一个“ 人 ”的类People，当中由属性姓名name, 年龄age， 让你需要利用sorted函数对一个类排序
+规则时name和age同时排序，name不同比较name，相同比较age
+但是People函数本身不具有比较功能，因此需要自定义，这时我们可以这么定义People类
+
+class People(object):
+    def __inti__(self, name, age):
+        self.name = name
+        self.age = age
+    def __str__(self):
+        return self.name + " : " + str(self.age)
+    def __it__(self, other):
+        return self.name < other.name if self.name != other.name else self.age < other.age
+if __name__ == "__main__":
+        print([str(item) for item in sorted ([People(" abc ", 18), People(" abc ", 19), (People(" abe ", 12), People(" abc ", 17)])])
+
+__It__  就是 less than 函数 ，当两个People实例相互比较的时候自动调用
+
+YAML 是 (YAML Ain't a Markup Language) YAML不是一种置标语言 的递归缩写
+在开发这种语言时，YAML的意思其实是:" Yet Another Markup Language " （仍然是一种置标语言）
+配置文件的一种
+Ps 配置文件的格式怎么这么多？
+一个好的配置文件 ： 
+① 规则足够友好   ②对人类友好，在没辅助工具时也清晰可读   ③支持简单的层级级关系   ④允许注释
+优秀的配置文件：
+⑤易于解析（解析库有多种语言实现）   ⑥逐行解析(数据不完整也可以)   ⑦支持嵌套的层级关系   ⑧支持列表和字典 
+⑨支持类型
+
+
+dts   -- Distributed Task Scheduler 分布式任务计划程序
+
+
+--------------------------------------------------------------
+
+重新复习.....
+
+首先 __init__.py
+__all__ 作用 ： 暴露接口
+代码中from xxx import xxx, 如果一个模块spam没有定义__all__,执行from spam import * 的时候会将spam中，
+非下划线开头的成员全部导入到当前命名空间中，这样当然就有可能弄脏当前命名空间，
+但是如果显式声明了 __all__, import * 就只会导入 __all__列出的成员。
+若all定义有错，会明确的抛出异常，而不是默默忽略
+
+
+[周报][孟繁镇][2019/07/15-2019/07/19] 
+
+后记 ：
+提取URI ，例 ： 
+( r"/movies/（\w+）/（\w+）/（\w+）", nidex.MoviesHandler )  # \w 匹配包括下划线在内的任何单词字符，
+  +    一个到多个
+  *   零个到多个
+
+
+nginx统一apache之间的关系
+apache稳定，nginx性能好
+
+前端服务器和后端服务器之间的区别
+当前后端分离部署的时候，服务器A用于部署前端项目，称为前端服务器，
+服务器B用于部署后端项目，称为后端服务器。
+后端服务器通过开放API，向前端服务器中的前端项目提供数据或数据操作接口，以此实现前后端衔接。
+项目成本受限可以前端项目和后端项目部署在同一台服务器上也可以，通过nginx等反向代理服务器根据访问地址进行分发
+
+
+
+服务器架构体系从初级到高级的发展过程
+
+
+
+Ps CDN全称 Content Delivery Network，内容分发网络，构建在现有网络基础之上的智能虚拟网络 ，依靠部署在各地的边缘服务器，通过中心平台的负载均衡、内容分发、调度等功能模块，使用户就近获取所需内容，降低网络拥塞，提高用户访问响应速度和命中率。CDN的关键技术主要有内容存储和分发技术。
+
+OPTM --> 优化
+daemons - processes  这两个貌似是一组
+
+
+------------------------------------
+
+从server端的 main.py 看起。。。只有三行
+from rezt.app import main:
+
+if __name__ == "__main__":
+    main()
+直接调用框架的main函数
+
+同时也增添了consts.py
+首先继承Reasons增添诸多错误原因描述，同时在Reasons中新增staticmethod返回函数的静态方法。
+该方法不要求传递参数静态方法无需实例化调用，同时实例化后也可以调用
+在consts.py中又新增了少许参数配置
+
+
+先看worker
+咋就又忘了....
+argparse标准库里面用来处理命令行的参数的库 （位置参数和选项参数）
+率先定义两个参数 
+①-c    --config-file
+②-d    --dev
+随后定义在运行时解析命令行，在存在参数的时候
+将参数赋值给局部变量 f 
+并加载配置信息传参给configs
+
+最后运行 run_tasks()并将  ** configs  传入
+
+在run_task中，率先建立时间循环 
+随后调用了一堆来自dts.worker.( _base, prober, worker )使用import引用参数
+
+
+management 
+
+首先从dts.management.admin import main
+
+admin中引用了 __base, utils
+随后看admin.py中·定义的函数main
+admin = login( username, secret秘密， url )
+
+
+-----------------------------------
+
+发现看不太懂，扭头去查如何上手一个新项目
+
+MVC模型 代表了 Model（模型）模型代表一个存取数据的对象或JAVA POJO。它可以带有逻辑，在诗句变化时更新控制器
+View视图 视图代表模型包含的数据可视化
+Controller控制器 控制器作用于模型和视图上。它控制数据流向模型对象，并在数据变化的时候更新视图，它使得视图和模型分离开
+
+①先明白系统时干什么的。谁在用这个系统？用这个系统干什么？
+②弄清系统如何分层分模块的，每层，每个模块都用到了什么技术或什么框架。又架构涉及文档的话去学习一下
+③搭建开发环境，通过典型功能明白系统里面的增删改查、通信、用户交互分别都是怎么实现的。
+④经过上面三个步骤就可以改几个bug并照葫芦画瓢做功能了
+
+--------------------------------------
+
+分割线之后，开始从server模块进行尝试。
+最先尝试的时debug模块，但是会报错，原因是没有对应名称的模组，进入到项目中检查后其实有对应的模组在
+dts-server/src/handlers/__init__.py 被 __all__暴露
+
+----------------------------------------------------
+
+在不断更换方向之后，转而研究整体思路
+
+Python3 模块 ： 如果用户从Python解释器界面退出再进入，那么你定义的所有方法和变量就都消失了。
+为此，Python提供了一个方法，把这些定义存放在文件夹中，为一些脚本或交互式的解释器实例使用，这个文件被称为模块
+而模块就是一个包含你定义的函数和变量的文件，其后缀名为.py。模块可以被别的程序引用，以使用该模块中的函数等功能。
+这也是一个Python标准库的使用方法，将文件夹变为一个Python模块，
+Python中每个模块的包中，都包含有__init__.py文件
+通常__init__.py文件为空，但是我们还可以为他增加其他的功能。我们在导入一个包的时候，实际上是导入了它的__init__.py文件
+这样我们可以在__init__.py文件中批量导入我们所需要的模块，就不再需要一个一个的导入了
+
+__init__.py中还有一个重要的变量，__all__，它用来将模块全部导入
+所以我们了解到，__init__主要控制包的导入行为。
+要清晰的了解__init__.py文件的作用，还需要详细了解一下import语句要你用机制：
+可以被import语句导入的对象可以是以下类型：
+①模块文件(.py文件)
+②C或者C++拓展（已编译为共享库或DLL文件）
+③包（包含多个模块）
+④内建模块（使用C编写并已链接到Python解释器中）
+当导入模块的时候，解释器按照sys.path列表中的目录来查找导入文件
+
+Ps .py文件的汇编只有在import语句执行时进行，当.py文件第一次被导入的时候，它会被汇编为字节代码，并将字节码写入到同名的.pyc文件中。后来每次导入操作都会直接执行.pyc文件
+（当.py文件的修改时间发生改变，这样会生成新的.pyc文件）
+在解释器中使用 -O选项的时候，将使用同名的.pyo文件，这个文件去掉了断言( assert )，断行号以及其他调试信息，体积更小，运行更快
+（使用-OO选项，生成的.pyo文件会忽略文档信息）
+
+
+
+
+
+
