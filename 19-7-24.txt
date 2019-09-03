@@ -1,0 +1,144 @@
+zlib ,gzup, bz2, zipfile 和 tarfile支持通用的数据打包和压缩格式
+
+emmm最后发现proto的解决方案竟然是 .... 在proto的基础上！还有对应的python适配包！
+我之前的操作真实醉了嘤嘤嘤
+
+现在第三次更新了问题，
+没有、、etc\\webapp.toml
+地址存储于_fixtures.py 中，具体表现为
+SERVER_CONFIG_FILE = pthjoin(dirname(dirname(__file__)), 'etc', 'webapp.toml')
+
+os.path.dirname(__file__)返回脚本的路径，但要注意以下几点。
+必须是真实存在的.py文件，如果在命令行交互窗口执行会出现 NameError:name '__file__' is not defined
+在运行的时候如果输入完整的执行路径，则会返回.py的全路径
+、
+os.path.join()函数用于路径拼接文件路径
+OK第三个困难也解决了；方法（将框架中的etc文件夹也直接拖拽到桌面上）
+
+第四个问题涉及到mongoDB的 相关联变量mongo的重写问题
+
+--至此才发现自己没有真实连接到数据库，此前只是在摸鱼式链接
+
+最后总算是解决了问题。之前在初次遇到toml问题时的遗留问题
+具体问题为软件中重写db和collection的时候，
+self.enfines['xxx']   xxx目标之前在通哥那里直接输入的 db 
+但是db函数中的目标为[' example '].test  前者为toml中的名称，后者test为目标数据库名称
+同理在cillection函数中返回值为 self.db.orders    此处的db为上一行的数据库对象，orders的位置为表名
+因此将example更改为db test更改为mydb orders更改为col2后最终实现了在网页上操作数据库的远大理想！
+
+基本上通过闭着眼直接改可以通过半数的测试样例，全通过肯定是要挨个看
+
+现在可以简单理解为server就是开启服务器，然后可以连接到数据库进行各种操作的那种
+
+接下来看client的example
+client拥有 function，data_source，result_processor， 以及其他诸多自定义方法
+client的example会有输入文件，输出文件，报错文件三部分文件均打开
+其中infile 为 r 只读 ，outfile和errorfile打开一个文件用于追加 
+Ps a+为打开一个文件用于读写
+反正就打开仨，实例化好DtsClient
+而后开始options.function直接搬运过来。同时赋予TextFileIO组件和 JsonFileIO组件
+直接开始运行客户端
+run里面套着 _run_job_loop 和 _run_result_loop
+
+都把参数加上之后的报错，在client 292行  _run_result_loop的199 await self.GET_meta()中的 182 return await self.request('GET') 中的request 中的allow_nonstandard_methods=True) 中的
+raise ValueError("Unsupported url scheme: %s" % self.request.url)
+最终得到  ValueError: Unsupported url scheme: server_url/jobs/
+
+
+emmmm又忘记了 
+add_argument('-f', '--foo') #选项参数
+add_argument('bar') #位置参数
+
+client也逐渐可以实现运行了，唯一要注意的就是client的最后一个位置参数是 server_url （在测试模式下可以实现）
+但是存在一个问题，问什么输入url以后
+
+首先_run_result_loop()加载了一个log.info
+
+随后开启循环等待   self.GET_meta()   ---- 发送一个GET请求 return await self.request('GET') --- 将结果返回给meta、
+在hello,world中为  Hello, jobs/!  
+
+疑问，client中_run_result_loop 明明其中的 meta就是一个字符串，怎么会有字符型索引。。。
+难不成这里又是一个字典在哪里需要再加一点。而且后面还能接get函数....神奇！再好好看看Client一定会有新发现的
+再来看一看协程函数async def request（）
+初始一大堆配置信息，
+而后try: response = await self.http_client.fetch()获取信息
+except 一个 HTTPClientError as e：并抛出异常
+else ：返回 json_decode(response.body)['result']
+补习英语 retrievables （可检索的）和 statistics（统计数据）
+但是只有特殊的字符串才可以转化为字典 - -
+
+先顺着向下看，self.log.info()
+获取目标的属性值      
+
+
+首先判断 getattr()  _logger 为空调用 os的environ和tornado.options.optioms
+getLogger()返回指定名称的logger实例，如果未指定名称，则返回root。根据实例名称会自动向上继承
+os.environ()获得一些有关于系统各种信息的时候会用到
+例如 
+os.environ['HOMEPATH'] : 当前用户主目录
+os.environ['TEMP'] : 临时目录路径
+等等诸如此类
+environ('DTS_CLIENT_LOG_LEVEL', 'info')
+
+os.environ.get()是python中os模块获取环境变量的一个方法
+
+J = os.environ.get("PALM_JS_ADDRESS")
+os.environ是一个关于环境变量的字典。 “PALM_JS_ADDRESS”是这个字典里的一个键
+如果有则返回对应得到值，没有则返回none
+随后对干上一步的结果进行 tornado.log.enable_pretty_logging()    按配置打开格式化日志输出
+最终log函数返回
+            self._logger = getLogger(__name__)
+
+Text和Json均为一种文件IO的格式
+
+没啥进展确实，转向研究另一个成功加载的函数 _next_job_argument()  
+此函数最后返回一个元组，元组内为【一个小元组和一个字典】
+如果self.q.empty()不为空，登记log.debug信息。然后协程返回 self.q.get()
+try: 尝试hi self.data_source.__anext__()
+except:StopAsyncIteration: 返回 None
+经测试可知再hello下,_run_job_loop()中的 _next_job_argument()的返回值为None，但是可以保持在循环的状态下。
+
+
+突然发现了一个智障错误，在运行项目的时候应该将项目中的etc配置文件拖动到桌面上，而不是将restful的测试文件拖动
+
+重新观摩标准配置文件
+里面有五条驱动服务器的类 ：  JobHandler UserAdminHandler FunctionAdminHandler
+NamespaceAdminHandler 和 VirtualHostAdminHandler五类    
+
+看起来很眼熟有没有！我们去看一看Client端，，好吧并没有，是test正好对应这五个
+好！没啥直接关系！所以我们先直接去看看这五个处理器都是干什么的
+
+明面上的JobHandler   _base 定义的 DtsHandler
+
+首先让我们聚焦到DtsHangler基类上面。由（HandlerBase）继承得来，
+直接
+@property
+def db() 覆盖数据库名，但尚未覆盖collection表名。定义了最基本的GET POST方法
+async def prepare(self):
+        super().prepare()  #先继承父类（超类）的方法
+        user = await self.db.users.findone({'_id': self.get_json('uid')})   # 从数据库查找对应id数据
+        self.current_user = user and UserModel(**user)    #and赋值若同真则赋值后面的 = = 迷之赋值大法，，心里感受一下
+
+①GET方法 
+ 如果_id为空，则_get_without_id()  -> raise NotImplementedError   提出报错
+如果不为空，则_get_with_id(self, _id)  -> return await self.collection.find_one({'_id' : _id})   #get中id不为空就去查找id并返回
+②POST方法
+如果_id 为空 则提出400报错
+否则继续运行 params = self.get_json('params')   #
+Ps get_json为基类handlers的一部分通过密钥从JSON对象（dict）获取数据
+来来看一看...
+keys = key if isinstane(key, (list, tuple)) else (keys, )
+try:
+    return functools.reduce(operator, getitem, keys, self.json)
+except: KeyError:
+    if default == MissingArgumentError:
+        self.raise_error(400, Reasons.ArgumentMissing(key))
+    else:
+        return default
+    Ps from functools import reduce
+reduce函数会对参数序列中的元素进行积累
+reduce(function, sequence [, initial] ) -> value
+其中function参数是一个拥有两个参数的函数，reduce依次从sequence中取一个元素，和上一次调用function的结果做参数再次调用function
+第一次调用function的时候，如果提供了inital参数，会以sequence中的第一个元素和initial作为参数调用function，否则会以序列sequence中的前两个元素做参数调用function，否则会以序列sequence中的前两个元素做参数调用function
+
+
