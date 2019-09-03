@@ -1,0 +1,253 @@
+接昨日份：
+__init__.py后 __main__.py也提上日程
+python中文件夹想作为一个模块被引用，就必须要包含__init__.py文件，即使此文件为空
+
+如果此模块想要被运行，则必须要包含__main__.py文件
+常规讲：__init__.py里面一般包含了需要引用的模块
+from ... import ...
+其中__all__参数为导出包内模块，不包含在__all__列表的模块不可被其他程序引用
+
+对__main__.py 其他博主理解为模块的入口函数执行模块
+当我们执行模块代码的时候首先会加载__init__.py定义的引入模块，然后进入__main__.py文件运行
+
+server
+因此server模块被调用的时。先后加载init和main两个模组。
+引入了第三方库，pkg_resources模块为Python库提供API以访问其资源文件，并为可扩展的应用程序和框架提供自动发现插件地API。
+
+Ps
+PEP382讲述了此问题
+Python提供pkgutil.extend_path来将包表示为命名空间包。
+from pkgutil import extend_path
+__path__ = extend_path(__path__, __name__)
+在包地__init__.py中，每个发行版本都需要在其__init__.py中提供相同的内容一遍调用extend_path，不依赖于先导入包的那部分。
+因此程序包的__init__.py实际上无法定义任何名称，因为它取决于sys.path首先导入部分的程序包片段顺序。
+
+setuptools提供的一个类似的函数 pkg_resources.declare_namespace
+它在表单中使用
+import pkg_resources
+pkg_resources.declare_namespace(__name__)
+在这个__init__.py中，不需要赋值给__path__,因为declare_namespace
+通过sys.modules修改包的__path__。作为一个特殊功能，declare_namespace还支持zip文件，并在内部注册软件包名称，以便setuptools今后对sys.path的添加可以正确地为每个软件包添加其他部分
+setuptools允许在发行版的setup.py中声明命名空间包，这样发行版开发人员就不需要将__path__修改版本放入__init__.py中。
+定义方法很多且相互存在兼容性问题，所以具体应用是可以参看PEP382
+对于consts也并没有写新功能（毕竟是放一些信息参数的模块）
+加入了报错信息，ssh命令，Roles规则
+
+Ps
+Python3版本main.py执行产生中间__pycache__
+用python编写好一个工程，第一次运行后，总会发现工程根目录下生成了一个__pycache__文件夹，里面是和py文件同同名的各种pyc或pyo文件
+    Pss python基本运行机制。Python程序在运行时不需要编译成二进制代码，时直接从源码运行程序。简单讲就是Python解释器将源码转换为字节码，然后再由解释器来执行这些字节码
+解释器的具体工作
+①完成模块的加载和链接
+②将源码编译为 PyCodeObject对象（字节码）写入内存，供CPU读取
+③从内存中读取并执行，结束后将PyCodeObject写回到硬盘当中，也就是复制到pyc和pyo中，以保存当前目录下所有脚本的字节码文件
+之后若再次执行该脚本，会先检查”本地是否有上述字节码文件“和“该字节码文件的修改时间是否与其脚本一致”。Yes -> 直接执行，否则重复上述操作
+好处：工程较大时可以大大缩短项目运行前的准备时间
+何时会出现__pycache__文件夹？
+工程目录下存在__main__.py文件，和其他将要调用的模块时。
+如果只有当前运行的脚本，“__main__”就不会生成__pycache__的文件
+怎样使此文件夹不出现？
+单次：运行脚本的时候添加 -B 参数
+永久 ：设置环境变量PYTHONDONTERITEBYTECODE = 1
+
+然后 server各个模组
+①daemoons .sethoscope听取心跳    .porter 传回作业结果
+_base 守护进程的基类   .tracer 从代理追踪日志记录
+②handlers _base 处理各种请求方法等 jobs处理进程等
+2.1 hanflers中的admin模块 _base 用于记录RequestHandler的数据库操作的修饰器
+都没写备注，也都是一些HTTP相应增删改查的对应操作
+③modules 空荡荡啥也木有
+④plugins deploy和sshrpc  只在 JobHandler运行时被调用
+Ps ssh（secue shell）建立在应用层基础上的安全协议
+notipy.smtp  可以通缩SMTP服务向外发送邮件
+
+总体server就是服务器功能部分吧，暂未发现与其他部分的联系
+
+本着服务端对用客户端的原则，第二个去看客户端的example
+Ps with
+再实际编码过程中，有一些任务需要做一些事前设置和事后处理，这是就需要 python 的 with出场了，with可以对这种需求进行一个比较优雅的处理，最常用的例子就是对于访问文件的处理
+一般我们访问文件资源的时候我们可以这么处理：
+f = open(r'c:\test.txt', 'r')
+data = f.read()
+f.close()
+合法，但是有隐患
+①如果再读写时异常就忘了异常处理    ②忘记关闭文件句柄
+
+所以有如下加强版本的写法：
+f = open(r'c:\test.txt', 'r')
+try:
+    data = f.read()
+finally:
+    f.close()
+此时就可以皮面因为读取文件时的异常发生而没有关闭问题的处理了。但代码长了一些，此时我们使用with有更加优雅的写法：
+with open（r'c:\test.txt', 'r'） as f：
+    data = f.read()
+with后面的对象返回结果直接赋值给f
+在此案例中open函数返回的文件对象赋值给了f.with会自己获取上下文件的异常信息
+with后面的对象要求有 __enter__() __exit__()两个方法，而文件对象f刚好是有这两个方法
+object.__enter__(self)
+进入与此对象相关的运行时上下文。with语句将此方法的返回值绑定到语句的AS子句中指定的目标
+object.__exit__(self, exc_type, exc_value, traceback)
+退出与此对象相关的运行时上下文。参数描述导致上下文退出的异常。
+若无异常发生，仨参数均为None， 若有异常发生，并且该方法希望抑制异常（阻止传播），则它应该返回True。否则异常在退出该方法时正常处理
+
+注意__exit__()方法不应该重新抛出传入的异常，这是调用者的职责
+
+client的example有好多个参数。。。。暂时不能运行，因为各个模块还没有被我正确的拼装在一起
+大概流程就是读取一堆参数，
+然后读写分离分别打开对应的文件，设置好用户对应信息
+并实例化 DtsClient 逐渐加载各种读写信息，最后使用run()函数完成最终调用、
+好！接下来让我们去一探究竟
+首先client源代码暴露的有
+DtsClient，TextFileIOComponent，WordFileIOComponent，JsonFileIOComponent，
+DailRotatingOutputFile上述五个接口
+进入client.py    分布式任务计划程序项目的客户端 内部仅有一个类名为 DtsClient
+emmmm太坏了   其余四个都是在components调用的
+FileIOCompotent：处理文件的组件作为dts客户端的输入输出，
+这个类不会被初始化，只能派生一个子类和implment；作为诸多衍生产物的基类而存在
+DailRotatingOutputFile 为结果文件创建一个类似于树的日常目录，返回一个只写文件对象
+诸如此类还有很多
+所以example中创建DtsClient函数后，加载的是Text和Json格式的IO
+好。。。。接下来主要让我们看一看Dts客户端有如何神奇的定义
+
+--------------------------------------------------------------
+
+首先这是一个分布式任何计划程序项目的客户端
+目标优先锁定 __init__初始化魔法 需要的参数着实很多。。。
+①str user_id 登陆ID 
+②str secret 用于身份验证的用户密码
+③str server_url 发送HTTP请求的服务
+④int num_max_coroutines 限制作业创建
+⑤float snooze_interval 在速度限制的情况下等待时间
+⑥EventLoop循环 一个对象实现的接口协议
+最大注意 max_client 是同时fetch的最大数量
+此操作可以在每个IOLoop上并行执行
+设置两倍数量的 num_max_coroutines 避免 （599，TimeoutError）对于timeout 参数也是如此
+
+稀里哗啦就设置完了反正就，
+然后http_client_config 设置 二倍的 num_max_coroutines 
+同时默认的链接超市和请求超时分别设置为30和60
+然后开始加载配置
+AsyncHTTPclient.configs（None， **http_client_config）
+此处将各种参数传参为自身变量，过程中顺手将loop等参数实现
+最后使用run对DtsClient进行开发
+loop.create_task() 
+在run()函数中使用 loop.create_task 开启 _run_job_loop() 和 _run_result_loop()
+try:    loop.run_forever()尝试永久开启
+except KeyboardInterrupt loop.stop()关闭循环
+向上寻找
+self.loop = loop or asyncio.get_event_loop()
+Ps 复习时间到 get_event_loop()
+初始情况下只会在主线程帮你创建心得event loop，并且在主线程中多次调用始终返回该event loop
+而在其他线程中调用 get_event_loop()则会报错，除非编程者在这些线程里面手动调用过
+set_event_loop()
+    Pss 补充，new_event_loop()是创建一个eventloop对象，而set_event_loop(eventloop对象)是将eventloop对象指定为当前线程的eventloop，一个线程内只允许运行一个eventloop，这意味着不能有大于等于两个 eventloop交替运行。
+这两者一般搭配使用，用于给非主线程创建eventloop
+如果是主线程，仅需要get_event_loop即可，也就是说，我们想运用协程，就要首先生成一个loop对象，然后loop.run_xxx()就可以运行协程了，就是如何创建这个loop
+对于主线程是 loop = get_event_loop()
+对于其他线程需要首先loop = new_event_loop()，然后 set_event_loop(loop)
+
+function = options.function
+data_source = TextFileIOComponent（infile = infile, start_pos = options.infile_start_posotion）
+result_processor  = JsonFileIOComponent（outfile = outfile, errfile = errfile）
+
+Ps 来来来继续复习...
+① @property 可以将python定义的函数“当作”属性访问，从而提供更加友好的访问方式，但有时候setter和deleter也是需要的
+只有 @property 标识只读
+@x.setter 表示可读可写
+@x.delater表示可读   
+
+反正就是给设置上，再去看看两个要传过去的              
+补习英语：component零件  timestamp时间戳
+
+各种FileIOCompoent拓展的区别就是 _parse(self, line)中的return拼接形式不同
+Text形式为   (line.strip(), ), {}
+Json形式为   (), json_decode(line)
+
+最后让我们去看看request等函数（有关于客户最核心的功能）
+request异步函数定义了一个加密 KeccakAuthenticator
+
+总而言之client是发起请求的一方
+第三个看worker
+客户端和服务端都看完了，接下来就是worker。
+
+Ps 上网查了以下这种三元组工作模式
+Client客户端负责生成一个任内务并且将任务发送到jobserver
+任务服务器jobserver找到某个能够执行该任务的worker后将该任务发送给他
+工人worker执行由jobserver发过来的任务并且将结果通过jobserver送回client
+
+由此来看 client和 worker之间无法直接通信，换句话收client根本不知道worker的存在。反之亦然，client和worker二者都只能通过jobserver进行通信
+为什么如此呢？某个客户 C1 需要商品 P1，但是他没有能力自己生产该商品。所以C1 只要将此需求
+job1委托给某个企业E1来做
+E1接受了来自C1的生产P1的任务job1后，将job1发送给了能够胜任此任务的工人W1
+W1完成后。商品沿原路径返回即可。
+结论 ：在整个流程中，C1根本不认识W1是谁，C1只和生产企业E1进行联系。对W11也是如此
+客户对应client
+生产企业对用jobserver
+工人对应worker
+这样以来的另外一个好处：
+一个工人可以从多个生产企业获取任务，一个生产企业可以给多个工人派发任务，一个客户可以将任务委托给多个生产企业，同时一个生产企业也可以接收来自多个客户的任务
+
+基于此，management管理对应的我个人感觉是和数据库相关联的部分，仅是个人感觉，所以进行论证
+
+直接从源码看起：
+首先management模块也读取命令行，由三个参数 --username, --secret --url 共同决定
+而后进入 management.admin中的main函数运行
+首先将三个参数带入函数login
+如果没有用户名，则现场输入。有则直接登陆。使用AdminClient(位于management._base)直接实例化
+实例化后直接使用login() 性感代码，在线登陆
+login()首先会尝试使用自身函数 _fetch(...)
+try ：_fetch()
+except ：HTTPError
+else ： if(response.get('secret') and 'administertor' in response['roles']):
+                return True
+            else:
+                return False
+最终else后return的是登陆的最终状态
+因此main函数第一行的赋值情况为布尔值
+随后进入while True：永久循环
+try：command = input(input you command).split()
+except: KeyboardInterrupt : print('\n')
+else:
+        try: function_name = command[0] + '_' + command[1]
+        except:IndexError: print('input error, please input again')
+         else:
+                try:    if command[1] == 'get'  :  admin.get( *command) 
+                         else : fn = getattr(admin, function_name)
+                                  fn(command[2], **make_input(command[3: ]))
+                 except: Exception as e:
+                          print(str(a))
+先输入指令，成功输入后，功能的名字等于command第二部分之间加一个 “_”
+若第二部分为get ，则直接调用 admin.get(**command)
+ 若不是，先返回admin中function_name的属性值；并启用fn（内心 ： ？这啥）将第三个及以后的指令放入
+
+检视admin.get() 设定_id = _id or ''
+targets - list(a)  -- 多余参数
+response = self._fetch(...)
+get_target(response, module + '_fields', targets)
+untils里面
+上一个函数存在于management的utils.py中 def get_target(response, fields, target = None) #字面含义是获取目标
+如果目标和response不为空
+      resopnse.pop(response中的每一个)
+
+且management中的主类为AdminClient，拥有 user secret server_url等参数，核心方法为_fetch() 可做出json相应
+login可以进行管理员登陆，其余全为各种增删改查操作看起来，
+综上
+manegement大概就是提供管理员登陆 + 管理的模块
+
+Ps 菜鸡时间到 ： split()方法
+split()通过指定分隔符对字符串进行切片，如果参数num有指定值，则仅分割除num + 1个子字符串
+英语补习 deploy 调动，部署
+
+Ps 菜鸡时间到 ： try-except else 配合
+else当try正常执行时会被执行，在except之后，finally之前定义就好。个人感觉就是把except视作判断语句，当except落空的时候，else会视作if条件未被满足而开始执行.
+综上， DtsClient大概是一个可以拥有各种数据格式的一个
+
+个人现在的理解：
+management
+
+下一步要研究各个模块之间的调用关系？
+首先改各个模块之间的关系..
+
+--------拍了个照，回来之后决定从server的runtests开始。client模块没看出门道暂时
+还是tests的五个测试对象，我们首先对jobs开始测试
