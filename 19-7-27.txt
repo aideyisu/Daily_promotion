@@ -1,0 +1,109 @@
+先来看看operate函数，
+LogTracer( AmqpConsumer ):
+首先零 message_class = LogMessage
+Ps 深入查询LogMessage
+LogMessage = _reflection.GeneratedProtocolMessageType('LogMessage', (_message.Message), {   
+'DESCRIPTOR' : _LOGMESSAGE,
+  '__module__' : 'messages_pb2'
+  # @@protoc_insertion_point(class_scope:dts.LogMessage) })
+而且后面为self.log.log
+(message.level, '[%s@%s %.6f] %s',
+                     message.app, message.hostname, message.timestamp,
+                     message.text,)
+python3 中 log()方法返回目标的自然对数。。（math模块下）
+getLogger()返回指定名称的logger实例，若未指定则返回root
+同时logtracer的功能是追踪日志信息从代理处获取
+然后查了一下Amqpconsumer中
+db是连接到engines中的mongo  # protocol = ' aiomongodb '
+broker连接到 rabbitmq # protocol = ' aioamqp '
+cache连接到aredis #protocol = ' aredis '  url=' redis://localhost/0 ' 
+对于没有第三方库支持的地方，在rezt中给予了engine_adapters
+针对message数据
+最后就是 .log.log (level, app, hostname, timestamp, text)查看这五个信息
+
+再来看看stethoscope聆听心跳
+#补课时间 mem 是访存  disk硬盘
+
+python3.5 新增功能typing。给Python增加了类型暗示。类型暗示是一种可以将你的函数变量声明为一种特定类型的声明。
+诚然类型暗示并不是绑定。它仅仅是暗示，所以这种机制并不能阻止程序猴子传入他们不应该传入的参数。
+PEP484有说明类型暗示的说明
+PEP483说明了背后的理论
+
+根据PEP484，“类型暗示可能会是内置的类（包括定义在标准库或者第三方扩展库），抽象出的基类，types模块中可获得类型和用户定义的类”
+这就意味着我们可以创建我们自己的类然后添加一个暗示
+我们在7_26_typee中测试了一下。同时我们可以创建别名，并使用别名为函数添加暗示
+
+-------------------------华丽の分割线--------------------------
+
+
+heartbeats 下定义给予 or 更新一组 心跳字典
+_check_hardware_resources(self, hb : HeartbeatMessage):
+        msg = {}
+        判断 nb的三个组合 cpu 、 mem、disk三个对象的占用率
+仅在有异常出现的时候会向msg中写入数据
+
+而后还有diagnose诊断函数(self,  interval = 60, tolerance = 3 )
+while True:开启无限循环，
+notification = {  }
+await asyncio.sleep(interval)
+hearbeats, self.heartbeats = self.heartbeats, {}
+
+time_tol = interval * tolerance # 总时间等于 interval 乘以 忍耐数 
+#补习时间 interval 间隔 
+随后再开启内层循环，
+for hostname， beats in heartbeats.items()循环心跳中的每一个元素
+    filters = {'_id' : hostname}      # 将每一个hostname记录下来
+    #心跳情况
+    if beats and 0 < timestamp() - beats[-1].timestamp < time_tol:
+        alive = True
+    else
+
+感觉从理解上更清晰了一些吧...
+
+========================================
+
+调研行动
+启动
+docker-compose 进入到docker-compose.yml文件存放的奴鲁
+# docker-compose up -d
+b'OCI runtime create failed: container_linux.go:344: starting container process caused "exec: \\"/mist.api/bin/docker-init\\": stat /mist.api/bin/docker-init: no such file or directory": unknown'
+
+
+调研 mist-ce
+为什么有这个平台 ？ 
+管理公共云和私有云，管理程序，容器和裸机的混合很困难。
+尤其是在寻找优化成本和简化整个组织流程方法时
+
+Mist通过提供必要的可见性和控制来解决这个问题，一遍再异构基础结构上应用一致的管理
+
+特点：
+①控制混合环境：使用统一仪表盘和API来管理以后计算基础架构
+②启动自助服务：将IT组合转化为源计算的互联代理
+③跟踪使用情况和成本：IT和财务管理可以实时了解使用情况
+④自动化工作流程：协调可重复部署并自动化跨基础架构的详见响应
+
+总的来说就是一个多元管理平台。
+可以让你同时链接多个终端。然后把代码 or 插件直接扔到其他终端上运行。
+同时还能检测开销，有规则，可以创建小组
+
+这是一个分为微服务的大型应用程序，属于docker中的包。
+运行它最简单的方法是docker-compose 
+为此需要安装一个稳定的版本，具体可以参照教程说明操作。
+ps 查看已经启动的服务状态
+pull pull镜像服务
+up 启动yml定义的所有服务 
+# -d 后台运行，并输出容器的名字， # -t 超时时间
+
+stop 停止 ~~~
+start 启动被停止的yml中的所有服务
+kill 强行停止yml中定义的所有服务
+rm 删除yml中定义的所有服务
+restart重启
+
+
+
+
+
+
+
+
