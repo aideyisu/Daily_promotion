@@ -1,0 +1,254 @@
+差不多就这样了......
+先看看JobHandler()   是干啥的 ，首先匹配范围为jobs/。。
+_get_with_id()   
+先chache.get()一波，然后将所得解码后分割出用户id 功能以及行为行为
+_get_with_id 和 _get_without_id 都需要被重写
+还有_creat创建一个新 job
+①发布job信息给MQ
+②将job数据防止Cache
+③更新current_user的项目信息
+
+_run_local()  -> 某某某不是一个管理员用户，发出警告
+如果是，则 loadf (server.plugins)
+最终返回 加载后数据
+Ps loadf 去看了看 直接返回 dts.server.plugins.main()函数
+
+
+另外四个的基础文件中包含了一个函数称之为operation_logger()
+用于记录数据库有关于RequestHandler的写操作
+记录了五个字段：
+doc_id --> 哪个文件
+op_type --> 创建更新或替换
+operator --> 谁进行的操作
+timestamp --> 操作时间
+ops --> 都进行了那些操作
+
+其余四个admin操作函数系列都用到另一个基类 --> AdminHandler(DtsHandler)
+定义了补丁函数PATCH可以帮助更新数据库补丁。最后返回的是operation-update _id-_id
+看来还是记录更新的
+
+DELETE 删除操作，需求目标 _id 
+上来第一个操作就是删除！ 然后查看是否删除 最后的返回与PATCH的目标基本一致
+
+随后按顺序看看会发生什么。
+首先看FunctionAdminHandler，正则匹配 ： r'admni/functions/...'
+定义了链接数据表的方法。
+①定义了 _create 创建job的函数，在确定各部分无误后调用父类的 _create。
+父类的create self.collection.insert_one(doc) 直接插入信息，并将插入信息的结果id返回
+②_get_without_id():  直接查找_id ？
+
+NamespaceAdminHandler(AdminHandler):
+pattern = r'/admin/namespace/...'
+竟然只有俩函数。第一个是链接到数据表 
+第二个是_get_without_id() 直接collection.find({}).to_list()
+看来仅仅是查表。而且是所有表都会被返回貌似
+
+UserAdminHandler(AdminHandler):   #这是第一个用到operation_logger装饰器的类
+pattern = r'/admin/user/...'
+首先同前两个一样也提供了collection和_get_without_id两个方法的重写
+其次有POST PATCH DELETH三种方法的向上调用过程。区别就是加了个记录者
+
+VirtualHostAdminHandler(AdminHandler):
+patterns = r'/admin/vhosts/...'
+重写了俩函数，其余的差不多。 _get_without_id 工程加入了额外参数， 'ssh_pem_cert' : False
+
+此四者每个都有一个  _updatable_fields
+还有几个有 _inital_fields = updatable_fields | {'_id'}
+
+通过updatable里没有 | 后面的元素，就前后前加再赋值
+
+心中异或异或，既然已经实现了对数据库的种种操作，那么management模块到底是用来干啥的= =汗颜
+首先再看看，需要赋予 username secret 和url三个参数
+
+
+...也定义了一个AdminClient。拥有_fetch login 也有
+ users，namespaces， functions，vhosts 的add update delete 
+其中functions额外拥有 deploy 
+vhosts额外拥有init
+
+
+大概浏览后，其实概念同第一次想的并不一样
+
+management和client同属于客户端，区别是client只能提出请求，但是management相当于管理员状态，通过管理系统给server提出要求进而间接操作数据库
+
+Ps先复习一下    Python中，pkg_resources会在python的虚拟环境中显示出该模块，正常使用并不会显示
+在 _base中，有 Events三步走定义，并且定义了AmqpHandler
+Ps 啥是AMQP （Advanced Message Queuing Protocol）一个提供统一消息服务的应用层标准高级消息队列协议
+是应用层协议的一个开放标准，为面向消息的中间件设计。
+基于此协议的客户端与消息中间件可以传递消息并不受不同产品不同开发语言等条件的限制。
+高级消息队列协议使得遵守该规范的客户端一个用和消息中间件服务器的全功能互操作成为可能
+
+看看AMqpHandler都有什么定义...
+初始化定义采用了 loop 循环的起始方法
+
+Ps aioamqp 是 AMQP 0.9.1协议的纯python实现，构建于PEP3156引入的Python异步I/O的支持之上，提供了基于协同程序的API，可以轻松编写高并发的应用程序
+
+
+dts.worker.__main__是worker的启动器
+①使用‘ broker.mq[jobs] ’ 并开始工作，最终将工作结果返回 results into broker.mq[results]
+②将“health 的状态” 和 “统计statistics”的数据包发送给 broker.mq[heartbeats]
+③追踪日志记录文件 和 将高级别的日志文件发送到队列 broker.mq[logs]
+从worker的简介来看 将jobs中的待办事项完成，
+同时将状态信息发送到heartbeats
+最后将跟踪日志文件过程中的高级别日志信息发送到 mq.logs
+
+有点像...工作站的感觉吧就。server服务端负责相应http信息，对接数据库。
+worker负责实际的处理应用，监管状态，并将状态保存
+
+！话不多说我们开始吧！
+
+在主函数中main
+初始import uvloop 
+uvloop基于 libuv 。libuv是一个使用C语言实现的高性能异步I / O库，uvloop是来代替asyncio默认时间循环，可以进一步加快异步I / O操作的速度
+有关于数据库或http库的时候，都说使用uvloop的驱动方式兼容性最好
+所以先调用个uvloop再进入主函数
+
+import argparse - - 又要调用命令行了看来
+然后from pip._vendor imoprt pytoml   （emmm暂时没有找到）
+随后创建命令行解析对象。 （-c config-file 以及 -d dev）
+open args的confid_file 从中加载配置信息
+最后 run_tasks()运行任务
+    |
+创建事件循环并建立队列Queue  (和其他队列一样都是先进先出) 专门为协程而定义
+
+先看看周边函数 dts.worker.worker 专门完成工作并返回结果
+dts.worker.prober 通过Broker将工作人员连接到服务器，并将统计发给 heartbeats （心跳）
+分为proper的proper
+worker的Worker，InternationalWorker，Agent都是来自run_tasks
+
+Just do it ! 不要怂就是干！
+q --> asyncio.Queue  （工作队列看来是）
+worker = Worker（q, 参数）
+iw = InternationalWorker
+agent = agent
+prober = Prober
+
+随后创建四个基本相似的循环
+loop.create_task( worker.start() )
+
+最后开启永久循环
+loop.run_forever()
+
+先来看看第一个AmqpConsumer() 是这个类中三个的父类AmqpConsumer继承自AmqpHandler
+其__init__会定义
+self.event_queue = event_queue 
+self.qos = qos or {} 
+self.consume_params = consume_params or {} 
+同时调用super().__init__(*a, **k)的父类初始化
+operate方法等待由其余几个具体的类根据鸽子情况进行补充
+
+_callback(channel, body, envelope, properties)
+body = decompress(body) #先把字符串压缩一下
+随后判断self.message_class 不为空且为 Message的子类，就对message_class 进行操作 .ParseFromString(body)
+否则仅是 message = body
+r = await self.operate(message) # 强势操作一波
+如果 操作结果r 不为空 且 properties.reply_to（内心：这是个啥）
+且判断 r和 Message为同类型：
+    r = r.SerializeToString（）   #看起来是序列化转化成字符串
+并等待 self.publish(properties.reply_to, compress(r))
+await channel.basic_client_ack(delivery_tag = envelope.delivery_tag)
+字符串 使用 zlib.compress方法压缩字符串，decompress方法解压字符串
+字节流 zlib.compressobj方法压缩数据流， zlib.decompressobj的方法压缩数据流
+issubclass函数（class, classinfo） 用于判断参数class是否是类型参数classinfo的子类
+ 还有add_to_event_loop创建任务加入循环
+start_consume开启消费
+
+大概就这样，进入Worker学习，顺便增进一下对于父类的理解
+def json_decode_safe json.loads()对数据进行解码。若异常则返回default
+ Ps loads解码    dumps编码
+_make_result(self, job, res, exc):记录结果专用函数 0_0
+
+Worker的operate
+首先self.log()加载说明
+self.event_queue.put() 将结果推入（timestamp(), Events.RECV, message.function #信息功能）
+
+args和keargs使用json_decode_safe分别解码
+
+rtnval = dynamin_load(message, function)(*args, **kwargs)    
+r = await rtnval if iscoroutine(trnval) else rtnval   
+
+#科普 dynamic_load -> 动态导入
+Ps dynamic_load(function):
+    ns, func = function.split('/', 1)
+    module = import_module(
+             f'dts.worker.functions. {**locals()}')
+    reolad(module)
+    return module.main
+
+reload 和 import_module均为importlib的库，importlib库的主要作用是根据字符串的形式导入模块，找到其中的类并执行。支持传入字符串来引入模块
+m = import_module('x.y')
+print(m.age)
+获取x.y文件的age属性
+reload用于模块重新加载，原因，模块只会被导入一次放入到字典sys.module当中。但是如果你改变了模块的内容，你就必须重启程序，python不支持重新加载或卸载之前导入过的模块，
+同时直接删除sys.module中的模块对象依然可以被其他程序的组件所引用，这并不明智
+Ps import_module('b.c.c') #绝对导入
+import_module('.c.c'm pakeage = 'b') #相对导入
+
+再导包完成后，该执行_make_result(message, r, e)  #未下雨先打雷
+status = Events.DONE if r.success else Events.FAIL   # 所以status是一个状态码
+await self.event_queue.put() #进入队列？？  这不是operate么！
+await self.log('info', f'finished with job { message._id }')
+
+emmm Events的真相： RECV = 1   FAIL = 2 DONE = 3
+
+AmqpConsumer中定义了 self.event_queue = event_queue #直接定义给事件队列
+显然 put  将数据加入队列，get 取出数据 join阻塞
+那么应该是在接收到一个任务的时候加入一次队列，状态码为 RECV 1
+在工作完成之后再进行一次入库操作，方法与入库时相同，此次状态吗由是否运行成功决定，成功状态吗则为DONE 3 ，失败则为 FAIL 2。这么一来便完成了操作函数
+同时dynamic_load中返回值为 module.main  恰为各个模组的对应处理入口，所以程序得以正常运行。
+
+例如sever的deploy和sshrpc和更深一层的notify中的smtp都拥有单独的main函数，显然是留给worker的接口
+
+那么站在从属关系的角度上，。。management和client都是主动发起请求的一方，
+server属于半主动，因为要调用worker，worker属于全被动的一方
+
+现在的困惑在于没有找到server显式调用的代码位置 -- 且worker拥有自己的main函数，
+且不同于worker的工作目标。worker拥有自己的 if __name__ == "__main__"
+因此也肯定是要被单独调用的
+ 
+。。。。。发现了server中与worker有关的部分deamon文件夹中也定义了一个AmqpConsumer，
+dts.server.daemons._base -- 守护进程的基类
+①持续的 consuming（处理） 信息来自AMQP broker（代理）
+②通过电子邮件通知指定的用户组
+dts.server.deamons.logtracer -- 从代理追踪日志记录
+dts.server.deamons.stethoscope -- 听取心跳
+①检查cpu/mem/disk的使用情况，并再负载很高的时候通知管理员
+②检查持续心跳，并在主机关闭时候通知管理员
+dts.server.daemons.porter -- 传回job的结果
+处理关于 broker.mq[results]的部分并设置相关
+emmm 他们的main函数都是找  _base  借的
+
+main() 俩参数 -c config-file -dev 命令行参数
+随后将 config-file加载
+再根据dev的具体情况，具体挂载到具体的db-dev 以及 consumer-dev 并设置好循环 loop = get_event_loop()
+
+!太坏了 uvloop是我见过第一个没有做windos适配的！！！
+
+try ： * consumer_types 中的每一个元素 视作 cls 
+             c = cls(engines, loop=loop)
+             cfg = consume_configs[cls.__name__.lower()]
+             loop.create_task(c.consume(**cfg))
+Ps
+先来看看区别，app.py中配置文件的加载
+configs = load_config_file(pthjoin(options.configs_dir, 'webapp.toml'))  -->定向加载拓展
+._base.py中的配置文件
+configs = load_config_file(opts.config_file) #直接把命令行读到的地址加载
+
+        Pss load_config_file(path : str, filetype = None) -> dict
+if filetype is None:
+        filrtype = path.splitext(path)[-1].lstrip('.')
+module = importlib.import_module(Defaults.ConfigParserModule.get( filetype, filetype ))
+with open(path, 'r', encoding = 'utf-8', errors = 'strict') as f:
+        return module.load(f)
+#反正最后就加载成功了！
+app的默认configs_dir 的默认加载路径时 pth.join(project, 'etc')
+
+项目的迷之命名方法
+app.py中
+from os.path import join as pthjoin
+consts.py中
+import os.path as pth
+
+所以这就导致了pth.join(x, y) 等价于pthjoin(x, y)    # 这...一度以为少个点，这可还行
+综上只是沿着路径加载了consume的属性信息
+
