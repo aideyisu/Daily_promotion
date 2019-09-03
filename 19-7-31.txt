@@ -1,0 +1,286 @@
+git clone --recursive https://github.com/mistio/mist-ce.git
+cd mist-ce
+docker-compose up -d
+
+wget https://github.com/mistio/mist-ce/releases/download/v4.1.1/docker-compose.yml
+docker-compose up -d
+aAaA
+
+CI CD
+持续集成(Continuous integration)是一种软件开发实践，每次集成都通过自动化的构建（包括编译，发布，自动化测试）来验证，从而尽早地发现集成错误。
+
+持续部署（continuous deployment）是通过自动化的构建、测试和部署循环来快速交付高质量的产品。
+
+k8s 是自动化容器操作的开源平台，操作包括了部署，调度和节点集群间扩展。
+如果曾使用过Docker容器技术部署容器，可以将Docker看成k8s内部使用的低级别组件。K8s不仅支持Docker，还支持Rocker,这是另一种容器技术
+Ps Rocker
+ 创始者认为Docker忘记初心，想要成为不易平台而不是一个组件，一个构建模块
+故推出了Rocker，另一种容器技术。
+可以做到：
+①自动化容器的部署和复制
+②随时扩展或收缩容器规模
+③将容器组织成组，并且提供容器间的均衡负载
+④很容易地升级应用程序容器地新版本
+⑤提供容器弹性，如果容器失效就替换它
+还有很多
+
+实际上，K8s只需要一个部署文件，使用一i条命令就可以部署多层容器（前端+后台等）的完整集群：
+
+Kubectl是Kubernetes API交互的命令行程序
+重点概念：
+①集群：
+集群是一组节点，这些节点可以是物理服务器或者是虚拟机，之上安装了K8s平台。
+    Pss pod ( plain old data structure ) C++标准定义的一类数据结构，POD适用于明确的数据底层操作，通常被应用于系统的边界处，即指不同系统之间只能以底层数据的形式进行交互，系统的高层逻辑互相不兼容。此时当对象的字段值是在外部数据中构建的时候，系统暂时没有办法进行语义检查和解释，此时就是和使用POD来存储数据
+
+    Pss service 通过 label 找到对应的 Pod 实现从前端容器正确可靠地指向后台容器。service是一系列Pod以及访问这些Pod策略地一层抽象。
+
+
+后端学习计划
+image和container之间地关系和区别：
+镜像地概念更多偏向于一个环境包，这个环境包可以移动到任意地Docker平台中运行 ； 而容器就是你运行环境包地实例。你可以针对这个环境包运行若干个实例。
+可以说container是images地一种具体表现形式。可以认为镜像与装载操作系统的ISO镜像是一个概念，而容器则可以理解为镜像启动的操作系统。一个镜像可以启动任意多个容器，即可以装载多个操作系统
+Ps Docker ps默认只会显示正在运行的容器，但是docker info中的数量显示的是容器总数
+
+镜像与容器的先后顺序，必然是现有镜像才有实例，虽然创建镜像可以参考某个容器，但是标准的做法是先制作镜像再跑容器
+
+①镜像Image就是一堆只读层的同一视角。这些曾叠加在一起，统一文件系统(union file system )技术能够将不同的层整合成为一个文件系统，为这些层提供了一个统一的视角，如此便隐藏了多层的存在，从用户角度而言的确只能看到存在一个文件系统。在一个运行中的容器内部，这些层是不可见的
+
+②容器container的定义和镜像几乎一摸一样，也是一堆层的统一视角，唯一区别在于容器最上面一层是可读可写的。
+（不细心的我没有发现）容器的定义没有提及容器是否在被运行，而这正是故意的。
+重点    容器 = 镜像 + 可读层，而并没有说是否要运行容器
+
+③运行态容器（running container）被定义为一个可读写的统一文件系统加上隔离的进程空间和包含其中的进程。
+文件系统隔离技术牛逼！  一个容器中进程可能会对文件进行修改，删除，创建，这些都将作用于可读写层。即使容器不再运行，我们依然可以从文件系统中找到刚刚的新文件
+
+④镜像层（image layer）不仅仅包含文件系统的改变，还包含了其他的重要信息。
+元数据（metadata）就是关于这个层的额外信息，它不仅能够让docker获取运行和构建时的信息，还包括了父层的层次信息。需要注意的时，只读层和可读可写层都包含了元数据。除此之外，每一层还包括了一个指向父层的指针，若没有，则说明此层为最底层
+
+综上，docker create命令为指定的镜像image添加了一个可读可写层，构成了一个新的容器（未运行）
+docker run命令类似于 git pull命令。git pull命令就是git fetch 和 git merge两个命令的组合，同样的，docker run就是docker create 和 docker start两个命令的组合
+
+
+docker ps 会列出所有正在运行中的容器，这隐藏了非运行状态容器的存在，如果想要想要找出这些容器，我们可以使用 docker ps -a  这条命令会列出所有的容器，不管是运行中的，还是停止的
+
+docker images 会列出所有顶层(top-level)镜像。实际上在此处我们还没有办法区分镜像和只读层，所以我们提出了顶层镜像的概念。只有创建容器时使用的镜像或者是直接pull下来的镜像能被成为顶层镜像，并且每个顶层镜像下面都隐藏了多个镜像层。
+
+docker images -a 这个命令列出了所有的镜像，可以是说列出了所有的可读层，如果你想要查看某个image-d下的所有层，可以使用docker history来查看
+
+dockers stop < contaniner-id >
+此命令会向运行中的容器发送一个SIGTERM的信号，然后停止所有进程
+
+docker kill < container-id >
+向所有运行在容器中的进程发送了一个不友好的SIGJKILL信号
+
+docker pause < container-id >
+stop和kill命令会发送信号给运行中的进程，docker pause命令则不一样，它利用了cgroups的特性将运行中的进程空间暂停（DIOR）
+缺点是一个SIGTSTP信号对于进程而言不够简单易懂，以至于无法让所有进程暂停
+
+docker rm < container-id >
+rm会移除构成容器的可读可写层，注意，这个命令只能对非运行态容器执行
+
+docker rmi <image-id>
+会移除构成镜像的一个只读层。你只能够使用rmi来移除最顶层（镜像）。当然你也可以使用 -f 参数强制删除中间的只读层。
+
+docker commit < container-id >
+commit命令将容器的可读可写层转化为一个只读层，这样就把一个容器转成了不可变的镜像
+
+docker build
+很有趣，会反复执行多个指令。bulid会根据Dockerfile中的FROM指令获取到镜像然后反复的进行①run  ②修改  ③commit 在循环中的每一步都会生成一个新的层，因此许多新的层会被创建
+
+docker exec命令会在运行中的容器执行一个新进程
+docker inspect会提取出容器或是镜像中最顶层的元数据
+docker save命令会创建一个镜像的压缩文件，这个文件能够在另一个主机的Docker上使用，和export命令不同，这个命令未每一层都保存了他们的元数据，这个命令仅对镜像生效
+
+docker export < container-id >
+创建一个tar文件，并且移除了元数据和不必要的层，将多个层整合成一个层，只保存了当前统一视角看到的内容
+
+docker history < image-id >
+递归地输出指定镜像地历史镜像
+
+
+
+Docker run 
+通过run创建一个新的容器
+-d  --detach=false 指定容器运行于前台还是后台，默认为前台
+-i   --interactive=false 打开STDIN，用于控制台交互
+    Ps STDIN 标准输入
+-t  --tty=false 分配tty设备，该方法可以支持终端登陆，默认为false
+-u  --user=" " 指定容器地用户
+-v  --volume=[] 给容器挂载存储卷，挂载到容器的某个目录
+-p  --publish=[] 指定容器暴露的端口
+
+例子：①运行一个在后台执行地容器，同时，还能由控制台管理
+docker run -i -t -d ubuntu:lastest
+②运行一个带命令在后台不断执行地容器，不直接展示容器内部信息
+docker run -d ubuntu:lateest ping www.baidu.com
+③运行一个在后台不断执行地容器，同时带有命令，被终止后还能继续跑，最后支持控制台管理
+docker run -d --restart=always ubuntu:lateest ping www.baidu.com
+④为容器指定名字 docker run -d --name=ubuntu_server ubnutu:lateest
+⑤暴露容器80端口，并指定宿主机80端口与其通信(之前是宿主机端口，之后是容器需要暴露的端口)
+docker run -d --name=ubuntu_server -p 80:80 ubuntu:lateest
+⑥指定容器内目录与宿主机目录共享(之前是宿主机文件夹，之后是容器需共享地文件夹)
+
+----------------------------------------------------------------------
+
+k8s基本概念
+①Pod
+在一个k8s集群中，Pod是创建部署和调度地基本单位。一个Pod代表着集群中运行的一个进程，它内部封装了一个或多个应用地容器。在同一个Pod内部，多个容器共享存储，网络IP，以及管理容器何如运行的策略选项。Docker是K8s中最常用的容器
+这个模式最常见的用法是 在Pod中运行一个容器：可以把Pod想象成是单个容器的封装，K8s直接管理的是Pod，而不是Pod内部的容器
+Pod也可以同时运行几个容器，这些容器之间需要紧密协作，并共享资源。在同一个Pod中的容器可以相互协作，逻辑上代表一个Service对象。每个Pod都是应用的一个实例，如果我们想要运行多个实例，就应该运行多个Pod
+同一个Pod中的容器，会自动的分配到同一个Node上，每一个Pod都会被分配一个唯一的IP地址，该Pod中的所有容器共享网络空间，包括IP地址和端口，Pod内部的容器可以使用localhost相互通信。Pod中的容器与外界通信时，必须分配共享网络资源（例如：使用宿主机的端口映射）
+我们可以为一个Pod指定多个共享的Volume，它内部的1所有人弄过期都可以访问共享的Volume。Volume也可以用来持久化Pod中的存储资源，以防容器重启后文件丢失
+我们可以使用K8s中抽象的Controller来创建和管理多个Pod，提供副本管理，滚动升级和集群级别的自愈能力。当Pod被创建后，都会被K8s调度到集群的Node上，直到Pod的进程终止而被移除掉
+
+综上，Pod为K8s集群中运行部署应用或者是服务的最小单元，支持多个容器在一个Pod中共享网络地址和文件系统，可以通过进程间的通信和文件共享这种简单高效的方式组合完成服务
+例如 ：运行一个操作系统发行版的软件仓库：使用一个Nginx容器用来发布软件，另一个容器专门用来从源仓库做同步，这两个容器镜像不太可能是一个团队开发的，但是他们一起工作才能提供一个微服务
+这种情况下，不同的开发团队各自开发构建自己的容器镜像，在部署的时候组成一个为服务对外提供服务。
+Pod是K8s集群中所有业务类型的基础，可以看作运行在K8s集群中的小机器人，不同类型的业务就需要不同类型的小机器人去执行
+目前k8s中业务主要可以分为长期服务形( long-running )、批处理形( batch )、节点后台支撑型( node-daemon )和状态应用型( stateful application )
+分别对应的小机器人控制器为Deployment，Job，DaemonSet，PetSet
+pod = pause容器 + 业务容器，业务容器共享pause容器的网络栈和volume挂载卷
+②Node是K8s集群的工作节点，它可以是物理机，也可以是虚拟机
+我们创建的Pod，都运行在K8s集群中的每个Node节点上。而且，在每个Node上再回存在一个运行容器的daemon进程，比如Docker daemon进程，它负责管理Docker容器的运行
+Node在K8s集群中也是一种资源，内部会创建该资源，定义Node示例如下所示
+③namespace ： 在一个K8s集群中，可以使用Namespace创建多个虚拟集群，这些Namespace之间可以完全隔离，也可以通过某种方式，使一个Namespace中的Service可以访问到其他Namespace中的Service
+查看当前K8s集群的Namespace列表，执行命令： kubectl get namespaces
+Namespace是一组资源和对象的抽象集合，如果可以用来将系统内部的对象划分为不同的项目组或是用户组
+pods，services，replication controllers和deployments等属于某一个namesoace（默认是default）
+node，persistentVolumes等则不属于任何namespace
+默认情况下，有会两个系统给自动创建好的Namespace
+default:K8s集群中没有Namespace的对象都会放到该默认Namespace中
+kube-system:K8s集群自动创建的Namespace
+
+④service Service是应用服务的抽象，通过labels为应用提供负载均衡和服务发现，匹配labels的Pod IP和端口列表组成endpoints，由kub-proxy负责将服务IP负载均衡到这些endpoints上
+每个Service都会自动分配一个cluster IP（仅在集群内部可访问的虚拟地址）和DNS名，其他容器可以通过该地址或DNS来访问服务，而不需要了解后端容器的运行
+Service从逻辑上定义了一个Pod的集合以及如何访问这些Pod的策略，又是也被称为是微服务，它与Pod、ReplicaSet等K8s对象之间的关系：
+用户Client请求Service，Service通过Label Selector，将请求转发到对应的一组Pod上
+同时，ReplicaSet会给予Label Selector来监控Service对应的Pod数量是否满足用户设置的预期个数，最终保证Pod的数量和replica的值一致
+在K8s的集群中，每个Node都会运行一个kube-proxy，它主要负责为Serivce实现一种虚拟IP的代理，这种代理有两种模式：
+①userspace模式，1.0版本加入，工作在4层传输层（TCPUDP over IP）
+②iptablies模式， 1.1版本加入，工作在7层应用层（HTTP）
+Service定义了4中服务类型，以满足使用不同的方式去访问一个Service，这4种类型包括
+ClusterIP、NodePort、LoadBalancer、ExternaIName
+①ClusterIP是默认使用的类型，它表示在使用K8s集群内部的IP地址，使用这种方式我们只能在集群总访问Service
+②NodePort类型，会在Node节点上暴露一个静态的IP地址和端口，使得外部通过NodeIP：NodePort的方式就能访问到该Service
+③LoadBalancer类型，通过使用Cloud提供商提供的负载均衡IP地址，将Service暴露出去
+④ExternalName类型，会使用一个外部的域名来讲Serivce暴露出去（1.7以上版本的kube-dns支持该类型）
+
+⑤Label是识别K8s对象的标签，以key/value的方式附加到对象上（key最长不能超过63字节，value可以为空，也可以是不超过253字节的字符串）
+Label不提供唯一性，并且实际上是很多对象（例如Pod）都使用相同的label来标志具体的应用
+Label定义好后其他对象可以使用Label Selector来选择一组相同的label对象
+⑥Annotations是key/value形式附加于对象的注解。不同于Labels用于标志和选择对象，Annotations则是用来记录一些附加信息，用来辅助应用部署，安全策略以及调度策略等
+比如deployment使用annotations来记录rolling update的状态
+补充：
+build位于k8s文档的关键脚本部分，必须从K8s根目录运行
+分为四大模块
+run.sh 在构筑的docker容器中运行命令
+copu-output.sh 将_output.dockerized/bin docker容器中的内容复制到本地的相同位置；还将复制出作为构建过程的一部分生成的特定文件模式。这是作为一部分自动运行的build/run.sh
+make-clean.sh 清除_output的内容，删除任何本地构建的容器映像别删除数据容器
+shell.sh bash使用当前repo代码的快照放入构建容器中的shell
+
+build中的直接脚本用于构建和测试。这将确保kube-build构建Docker镜像
+基于 build/build-image.DOckerfile 而后在该容器中执行适当的命令。这些脚本将确认正确的数据被运行为了增量构建，并将结果从容器中复制出来
+
+首先，K8s暴露服务的方式目前只有三种，LoadBlancer Service、ExternalName、Nodeport Service、Ingress
+我们需要将集群内服务提供外界访问会出现几个问题
+①Pod漂移问题
+因为K8s有强大的副本控制能力，能保证在任意副本挂掉的时候自动从其他服务器启动一个新的，还可以动态扩容等。通俗讲，这个Pod可能在任何时刻出现在任何节点上，同理也可能随时死在任何节点上；但随着Pod的创建和销毁，Pod IP肯定会动态变化；那么如何把这个动态的Pod IP暴露出去？这里借助于K8s的service机制，service可以以标签的形式选定一组带有指定标签的Pod，并监控 & 自动负载他们的Pod IP ，所以只要对外暴露 Service IP即可，这就是NodePort模式，即在每个节点上开启一个端口然后转发到内部Pod IP上
+②端口管理模式
+采用NodePort方式暴露服务面临问题是，服务多起后，NodePort在每个节点上开启的端口会极其庞大，而且难以维护；我们直到Pod之间可以相互通信，且Pod可以共享宿主机的网络名称空间，也就是说当在共享网络名称空间时，Pod上所监听的就是Node上的端口。这怎么实现 --> 最简单就是使用DaemonSet在么个Node上监听80，写好规则，因为Nginx外面绑定了宿主机80端口，本身又在集群内部，那么向后直接转发到相应的Service IP就行了
+③域名分配以及动态更新问题
+每次有新服务加入时又该如何修改Nginx的配置呢！？我们知道使用Nginx可以通过虚拟主机域名进行区分不同的服务，而每个服务通过upstream进行定义不同的负载均衡池，再加上location进行负载均衡的反向代理，在日常使用中只需要修改nginx.conf即可实现，那么在K8s中又该如何实现这种方式的调度呢！？
+假设后端的服务初始服务只有ecshop，后面又增加了bbs和member服务，那么又该如何将这两个服务加入到Nging-Pod进行调度呢？总不能都手动改吧！
+此时Ingress出现了！不算Nginx，Ingress包含两大组件
+对于Ingress简单的理解就是你原来需要修改Nginx配置，然后篇日志各种域名对应哪个Serivce，现在把这个当作抽象出来，变成了Ingress对象，你可以使用yaml创建，每次不要去改Nginx了，直接修改yaml然后创建/更新就行了，那么问题来了，Nging该如何处理
+
+Ingress Controller用来解决“Nginx”的处理方式的；Ingress Controoler通过与K8s API互动，动态感知集群中Ingress规则变化，然后去读取它，按照自己的模板生成一套Nginx配置，再写到Nging Pod里，最后reload一下即可
+实际上Ingress也是K8s API的标准资源类型之一，它其实就是一组基于DNS名称（host）或URL路径把请求转发到指定的Service资源的规则。用于将集群外部的请求流量转发到集群内部完成额服务发布。我们需要明白的是，Ingress自身资源不能进行“ 流量穿透 ”，仅仅是一组规则的集合，这些规则还有要其他功能的辅助，比如监听某套接字，然后根据这些规则的匹配进行路由转发，这些能够为Ingress资源监听套接字并将流量转发的组件就是Ingress Controller
+那么如何创建Ingress资源呢？
+Ingress资源是基于HTTP虚拟主机或URL的转发规则，需要强调的是这是一条转发规则。它再资源配置清单中的spec字段中浅谈了rules、backend和tls等字段进行定义。
+Ingress的spec字段是ingress资源的核心组成部分，主要包含以下三个字段：
+①rules：用于定义当前Ingress资源的转发规则列表；又rules定义规则，或没有匹配到规则是，所有流量会转发到又backend定义的默认后端
+②backend：默认的后端用于服务那些没有匹配到任何规则的请求；定义Ingress资源时，必须要定义backend或rule二者之一，该字段用于让负载均衡器指定一个全局默认的后端
+③TLS配置，目前仅支持通过默认端口443提供服务，如果要配置指定的列表成员指向不同的主机，则需要通过SNI TLS扩展机制来支持此功能
+
+backend对象的定义由两个必要字段组成：serviceName和servicePort，分别用于指定流量转发的后端目标Service资源名称和端口
+rules对象由一系列配置的Ingress资源的host规则组成，这些host规则用于将一个主机的某个URL映射到相关后端的Service对象
+
+Ingress本质时通过http代理服务器将外部的http请求转发到集群内部的后端服务。
+Ingress将集群外部的HTTP & HTTPS路由暴露给集群中的服务。流量路由被Ingress资源上定义的规则控制
+Ingress配置为服务提供外部可访问的URL，负载平衡流量，终止SSL / TLS以及提供基于名称的虚拟主机。一个入口控制器负责旅行入口，通常由一个负载均衡器，虽然它也可以配置边缘路由器或额外的前端，以帮助处理流量。
+Ingress不会暴露任意端口或协议。将出HTTP HTTPS之外的服务器暴露给互联网通常使用
+ Service.Type = NodePort 或 Service.Type = LoadBalancer类型的服务
+
+Ps 宿主机
+    就是主机。这个概念是相对于子机而言的，比如你安装有虚拟机的话，那么相对于虚拟机而言，你正在使用的计算机就是宿主机，虚拟机是安装在主机上的，必须在主机上才能运行，此时主机就是一个“宿主机”
+   Pss 双宿主主机
+        它是一个具有两个网络适配器的主机系统，并且主机系统中的寻径功能被禁止，而对外部网络的服务和访问则由网关上的代理服务器提供。它是一种结构非常简单，但安全性非常高的防火墙系统，是对双宿主主机防火墙的一个改进
+
+---------------------华丽の分割线 -----------------------------
+
+Dockerfile & K8s
+docker build -> 使用当前目录下的Dockerfile文件创立新的镜像
+首先时创建Dockerfile的原则：
+①更快的构建速度
+②更小的Docker镜像大小
+③更少的Docker镜像层
+④充分利用镜像缓存
+⑤增加Dockerfile可读性
+⑥让Docker容器使用起来更简单
+
+①FROM
+Dockerfile文件是以FROM指令开始的，通过该指令从docker hub上或本地存储库中拉取镜像作为基本镜像。
+②Run  -- run由两种形式
+RUN shell形式
+RUN [ “executable”, "param1" ] (exec)
+exec形式被解析为JSON数组，这意味着必须使用双引号而不是单引号
+该RUN指令i将在当前图像之上的新层中执行任何指令并提交结果。生成的提交图像将用于下一步的Dockerfile
+③CMD   有三种形式
+CMD [ “ exectable ”, " param1 " ]  (exec形式，首选形式)
+CMD [ "param1", "param2" ]  (作为ENTRYPOINT的默认参数)
+CMD command param1 param2 （shell形式）
+④EXPOSE
+EXPOSE指令用于指定容器将要监听的端口，我们可以指定端口是监听TCP还是UDP，如果未指定协议，则默认为TCP。因此应该为应用程序使用常见的端口。
+例如Apache web服务镜像应该使用 EXPOSE 80 ，而MingoDB使用 EXPOSE 27017
+⑤LABEL
+该LABEL指令将元数据添加到镜像。LABEL是键值对。要在LABEL值中包含空格，需要使用引号和反斜杠，就像在命令行中解析一样。
+同一镜像可以有多个标签，我们可以在一行中指定多个标签。基本或父镜像中包含的标签（FROM中的镜像）有镜像继承。如果标签已存在但具有不同的值，则最近应用的值将覆盖任何现前设置的值
+⑥MAINTAINER 该指令设置生成的镜像的Author字段。而LABEL指令ishi一个更加灵活的版本，我们应该使用它，因为它可以设置我们需要的任何元数据，并且可以轻松查看
+⑦ENV有两种形式
+第一种 ENV < key > < value >将一个变量设置为一个值。第一个空格后的整个字符串将被视为 <value>
+包括空格字符。该值将针对其他环境变量进行解释，因此如果未对其进行转义，则将删除引号字符
+第二种 ENV < key > = < value >允许一次设置多个变量。
+⑧COPY 和 ADD 
+COPY指令从中复制新文件或目录 <src> ，并将他们添加到路径中容器的文件系统中 <dest>
+<src可以指定多个资源>    每个<src>都可以包含通配符
+COPY指令非常简单，仅用于将文教拷贝到镜像中。ADD相对复杂一些，可以用于下载远程文件以及解压压缩包，语法基本类似
+⑨ENTRYPOINT
+Dockerfile显示使用 ENTRYPOINT 在前台运行 Apache 作为 PID 1
+辅助脚本被拷贝到容器，并在容器启动时通过ENTRYPOINT执行
+⑩CMD & ENTRYPOINT
+Dockerfile应至少指定一个CMD或ENTRYPOINT命令
+ENTRYPOINT应该在将容器用作可执行文件时定义
+CMD应该用作定义ENTRYPOINT命令的默认参数或在容器中执行 ad-hoc命令对的方法
+
+十一： VOLUME 
+用来暴露任何数据库存储文件，配置文件，或容器创建的文件或目录。强烈建议使用VOLUME来管理镜像中的可变部分和用户可以改变的部分
+
+十二：WORKDIR
+该指令集的工作目录对任何 RUN， CMD， ENTRYPOINT，COPY和ADD有效。如果WORKDIR不存在，即使它未在任何后续Dockerfile指令中使用，也将创建它
+该指令合一在Dockerfile中多次使用。若提供未相对路径，它将相对于前一条指令的了路径
+可以解析现前使用的环境变量，所以只能显式设置环境变量 Dockerfile
+
+
+
+Dockerfile类似于Makfile，用户使用docker build就可以编译镜像，使用该指令可以设置编译镜像时使用的CPU数量、内存大小、文件路径等
+Docker Daemon从 Dockerfile中顺序读取指令，生成一个临时容器，在容器中执行指令，容器编译成功后会提交作为镜像层加入最终镜像，为了加快编译过程，Docker Daemon采用了缓存机制，如果在缓存中找到了需要的中间镜像则直接使用该镜像而不生成临时容器
+Dockerfile由多条指令组成，每条指令在编译镜像时会执行相应的程序完成某些功能，由指令 + 参数组成，以逗号分割， #作为注释起始符，虽说指令不区分大小写，但是一般指令使用大写，参数使用小写
+
+
+
+Ps  apt-get clean 把已经安装软件包的安装包删除，一个给硬盘腾地方的好办法
+apt-get autoremove 删除为了满足其他软件包的依赖而安装，但现在不再被需要的软件包
+apt-get remove 软件包名称  --> 删除已安装的软件包（保留配置文件）
+apt-get --purge remove 软件包名称 --> 删除已安装包 （不保留配置文件）
+
+先帝创业未半而中道崩殂。dockerfile实验的第一步就跪了- -
